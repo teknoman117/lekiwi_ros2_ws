@@ -1,0 +1,6 @@
+[submodule "src/waveshare_servos"]
+	path = src/waveshare_servos
+	url = https://github.com/htchr/waveshare_servos
+[submodule "src/lekiwi_description"]
+	path = src/lekiwi_description
+	url = https://github.com/teknoman117/lekiwi_description
