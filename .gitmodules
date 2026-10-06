@@ -4,3 +4,9 @@
 [submodule "src/lekiwi_description"]
 	path = src/lekiwi_description
 	url = https://github.com/teknoman117/lekiwi_description
+[submodule "src/so101_description"]
+	path = src/so101_description
+	url = https://github.com/teknoman117/so101_description
+[submodule "src/lekiwi_bringup"]
+	path = src/lekiwi_bringup
+	url = https://github.com/teknoman117/lekiwi_bringup
