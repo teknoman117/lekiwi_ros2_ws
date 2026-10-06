@@ -10,3 +10,12 @@
 [submodule "src/lekiwi_bringup"]
 	path = src/lekiwi_bringup
 	url = https://github.com/teknoman117/lekiwi_bringup
+[submodule "src/lekiwi_teleop"]
+	path = src/lekiwi_teleop
+	url = https://github.com/teknoman117/lekiwi_teleop
+[submodule "src/lekiwi_moveit_config"]
+	path = src/lekiwi_moveit_config
+	url = https://github.com/teknoman117/lekiwi_moveit_config
+[submodule "src/so101_moveit_config"]
+	path = src/so101_moveit_config
+	url = https://github.com/teknoman117/so101_moveit_config
