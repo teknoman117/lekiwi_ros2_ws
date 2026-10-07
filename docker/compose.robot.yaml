@@ -1,0 +1,70 @@
+# Robot: the Fast DDS discovery server and robot.launch.py (servo driver and controllers,
+# move_group, arm_marker, joy_teleop). Host networking.
+#
+#   docker/setup-env.sh robot                              # once: writes docker/.env
+#   docker compose -f docker/compose.robot.yaml up --build -d
+#   docker compose -f docker/compose.robot.yaml logs -f robot
+#   docker compose -f docker/compose.robot.yaml run --rm shell   # ros2 CLI on the robot
+#
+# Settings come from the environment or docker/.env (see .env.example).
+name: lekiwi-robot
+
+x-robot: &robot
+  image: lekiwi:robot
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+    target: robot
+    args:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
+  network_mode: host
+  ipc: host            # shared-memory transport between the containers
+  init: true           # forwards signals to the ROS processes
+
+x-robot-env: &robot-env
+  ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+  ROS_DISCOVERY_SERVER: 127.0.0.1:${DISCOVERY_PORT:-11811}
+
+services:
+  discovery:
+    <<: *robot
+    command: fastdds discovery --server-id 0 --udp-port ${DISCOVERY_PORT:-11811}
+    restart: unless-stopped
+
+  robot:
+    <<: *robot
+    depends_on: [discovery]
+    environment: *robot-env
+    devices:
+      - ${SERIAL_DEVICE:-/dev/ttyACM0}:/dev/ttyACM0
+    volumes:
+      - /dev/input:/dev/input         # joysticks, also ones plugged in later (joy:=true)
+    device_cgroup_rules:
+      - 'c 13:* rmw'                  # input devices
+    group_add:
+      - "${SERIAL_GID:-20}"           # the servo port's group on the host
+      - "${INPUT_GID:-20}"            # the joystick's group on the host
+    command: >-
+      ros2 launch lekiwi_bringup robot.launch.py
+      use_mock_hardware:=${USE_MOCK_HARDWARE:-false}
+      limp:=${LIMP:-false}
+      marker_mode:=${MARKER_MODE:-free}
+      marker_speed:=${MARKER_SPEED:-0.08}
+      joy:=${ROBOT_JOY:-false}
+      joy_device:=${JOY_DEVICE:-0}
+      joy_deadzone:=${JOY_DEADZONE:-0.166}
+    # Stop it like Ctrl-C: the servo driver stops the wheels only on a clean shutdown
+    stop_signal: SIGINT
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+  shell:
+    <<: *robot
+    profiles: [tools]
+    environment:
+      <<: *robot-env
+      ROS_SUPER_CLIENT: "TRUE"        # sees the whole graph (ros2 node list, topic echo, ...)
+    stdin_open: true
+    tty: true
+    command: bash
