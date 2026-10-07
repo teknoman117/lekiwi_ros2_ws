@@ -1,0 +1,8 @@
+# build output and editor files
+build/
+install/
+log/
+.vscode/
+**/.git
+**/__pycache__/
+docker/.env

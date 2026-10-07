@@ -1,0 +1,62 @@
+# Workstation: RViz (MotionPlanning panel, arm marker) and the joystick driver, connected to the
+# robot's discovery server at ROBOT_IP. Host networking.
+#
+#   docker/setup-env.sh workstation                        # once: writes docker/.env
+#   ROBOT_IP=<robot address> docker compose -f docker/compose.workstation.yaml up --build
+#   docker compose -f docker/compose.workstation.yaml run --rm shell   # ros2 CLI
+#
+# ROBOT_IP comes from the environment or docker/.env (see .env.example).
+name: lekiwi-workstation
+
+x-workstation: &workstation
+  image: lekiwi:workstation
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+    target: workstation
+    args:
+      HOST_UID: ${HOST_UID:-1000}
+      HOST_GID: ${HOST_GID:-1000}
+  network_mode: host
+  ipc: host
+  init: true
+
+x-workstation-env: &workstation-env
+  ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+  ROS_DISCOVERY_SERVER: ${ROBOT_IP:?set ROBOT_IP to the robot's address, in the environment or docker/.env}:${DISCOVERY_PORT:-11811}
+  ROS_SUPER_CLIENT: "TRUE"            # RViz and the CLI see the whole graph
+
+services:
+  workstation:
+    <<: *workstation
+    environment:
+      <<: *workstation-env
+      DISPLAY: ${DISPLAY:?DISPLAY is not set}
+      XAUTHORITY: /tmp/.Xauthority
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - ${XAUTHORITY_FILE:-/dev/null}:/tmp/.Xauthority:ro
+      - /dev/input:/dev/input         # joysticks, also ones plugged in later
+    devices:
+      - /dev/dri:/dev/dri
+    device_cgroup_rules:
+      - 'c 13:* rmw'                  # input devices
+    group_add:
+      - "${VIDEO_GID:-44}"
+      - "${RENDER_GID:-44}"
+      - "${INPUT_GID:-44}"
+    command: >-
+      ros2 launch lekiwi_bringup workstation.launch.py
+      rviz:=${WORKSTATION_RVIZ:-true}
+      joy:=${WORKSTATION_JOY:-true}
+      joy_device:=${JOY_DEVICE:-0}
+      joy_deadzone:=${JOY_DEADZONE:-0.166}
+    stop_signal: SIGINT
+
+  shell:
+    <<: *workstation
+    profiles: [tools]
+    environment: *workstation-env
+    stdin_open: true
+    tty: true
+    command: bash

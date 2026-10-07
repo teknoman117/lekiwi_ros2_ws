@@ -1,0 +1,13 @@
+# Override for running the robot side without the servo board (mock hardware), e.g. on a
+# workstation for testing:
+#   docker compose -f docker/compose.robot.yaml -f docker/compose.robot.mock.yaml up --build
+services:
+  robot:
+    devices: !reset []
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      ROS_DISCOVERY_SERVER: 127.0.0.1:${DISCOVERY_PORT:-11811}
+    command: >-
+      ros2 launch lekiwi_bringup robot.launch.py use_mock_hardware:=true
+      marker_mode:=${MARKER_MODE:-free} joy:=${ROBOT_JOY:-false}
+    restart: "no"
