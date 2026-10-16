@@ -1,0 +1,12 @@
+# LDROBOT LD19 (or LD06): ldlidar_stl_ros2 (src/ldlidar_stl_ros2). Node name: lidar.
+# Parameters as in the driver's src/demo.cpp and launch/ld19.launch.py. Do not run the driver's
+# example launch files: they publish their own base_link -> base_laser transform.
+lidar:
+  ros__parameters:
+    product_name: LDLiDAR_LD19        # LDLiDAR_LD06 for the LD06
+    topic_name: scan
+    frame_id: lidar_link              # urdf/manipulator.urdf.xacro
+    port_name: /dev/ldlidar           # the driver's udev symlink; launch argument lidar_port
+    port_baudrate: 230400
+    laser_scan_dir: true
+    enable_angle_crop_func: false

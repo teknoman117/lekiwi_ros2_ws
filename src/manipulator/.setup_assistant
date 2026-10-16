@@ -1,0 +1,10 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: manipulator
+    relative_path: config/manipulator_moveit.urdf.xacro
+  srdf:
+    relative_path: config/manipulator.srdf.xacro
+  package_settings:
+    author_name: Nathan Lewis
+    author_email: git@nrlewis.dev
+    generated_timestamp: 1791259200

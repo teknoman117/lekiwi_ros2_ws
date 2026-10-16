@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="manipulator">
+
+  <!-- MoveIt's model of my LeKiwi: urdf/manipulator.urdf.xacro plus the ground. Only move_group and
+       the MoveIt RViz panel use it; the joints are the same as robot_state_publisher's model. -->
+  <xacro:include filename="$(find manipulator)/urdf/manipulator.urdf.xacro"/>
+  <xacro:include filename="$(find lekiwi_moveit_config)/config/ground.xacro"/>
+
+  <xacro:lekiwi_ground/>
+
+</robot>

@@ -1,0 +1,10 @@
+# Raspberry Pi Camera Module 3 (camera_ros, built against Raspberry Pi's libcamera). Node name:
+# wrist_camera, so the image is /wrist_camera/image_raw.
+# TODO (camera spike on the Pi 5): the camera id or name, and whether camera_ros takes frame_id.
+wrist_camera:
+  ros__parameters:
+    camera: 0                         # index or name of the Camera Module 3 (libcamera)
+    width: 1280
+    height: 720
+    format: RGB888
+    frame_id: wrist_camera_optical_frame   # urdf/manipulator.urdf.xacro

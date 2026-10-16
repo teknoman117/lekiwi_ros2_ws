@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- LDROBOT LD06 / LD19 lidar: a 38.6 mm x 34 mm cylinder (placeholder geometry until a mesh).
+       ${name}_link is the scan centre and the driver's frame_id (x forward, z up); *origin
+       places the bottom of the lidar on 'parent'. -->
+  <xacro:macro name="ld06" params="parent name:=lidar *origin">
+    <xacro:property name="radius" value="0.0193"/>
+    <xacro:property name="height" value="0.034"/>
+    <xacro:property name="scan_height" value="0.026"/>  <!-- scan plane above the bottom -->
+
+    <link name="${name}_base_link">
+      <visual>
+        <origin xyz="0 0 ${height/2}" rpy="0 0 0"/>
+        <geometry><cylinder radius="${radius}" length="${height}"/></geometry>
+        <material name="manipulator_black"><color rgba="0.1 0.1 0.1 1.0"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${height/2}" rpy="0 0 0"/>
+        <geometry><cylinder radius="${radius}" length="${height}"/></geometry>
+      </collision>
+    </link>
+    <joint name="${name}_base_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_base_link"/>
+      <xacro:insert_block name="origin"/>
+    </joint>
+
+    <link name="${name}_link"/>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${name}_base_link"/>
+      <child link="${name}_link"/>
+      <origin xyz="0 0 ${scan_height}" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+</robot>

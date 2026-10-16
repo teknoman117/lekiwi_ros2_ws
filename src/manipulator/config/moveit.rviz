@@ -1,0 +1,94 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Cell Size: 0.05
+      Plane Cell Count: 20
+      Value: true
+    - Class: moveit_rviz_plugin/MotionPlanning
+      Enabled: true
+      Name: MotionPlanning
+      Move Group Namespace: ""
+      Robot Description: robot_description
+      Planning Scene Topic: /monitored_planning_scene
+      Planning Request:
+        Planning Group: arm_position_only
+        Interactive Marker Size: 0.1
+        Query Start State: false
+        Query Goal State: true
+        Show Workspace: false
+      Planned Path:
+        Trajectory Topic: /display_planned_path
+        Loop Animation: false
+        Show Trail: false
+        State Display Time: 0.05 s
+      Scene Robot:
+        Show Robot Visual: true
+        Show Robot Collision: false
+      Value: true
+    - Class: rviz_default_plugins/InteractiveMarkers
+      Enabled: true
+      Name: Arm marker
+      Interactive Markers Namespace: /arm_marker
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Value: true
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: Lidar
+      Topic:
+        Value: /scan
+        Reliability Policy: Best Effort
+      Size (m): 0.01
+      Color Transformer: Intensity
+      Value: true
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: ToF points
+      Topic:
+        Value: /tof/points
+        Reliability Policy: Best Effort
+      Size (m): 0.005
+      Style: Points
+      Color Transformer: AxisColor
+      Axis: Z
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: Wrist camera
+      Topic:
+        Value: /wrist_camera/image_raw
+        Reliability Policy: Best Effort
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: base_footprint
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 1.0
+      Focal Point:
+        X: 0.1
+        Y: 0
+        Z: 0.1
+      Name: Current View
+      Pitch: 0.5
+      Yaw: 0.8
+Window Geometry:
+  Height: 900
+  Width: 1500

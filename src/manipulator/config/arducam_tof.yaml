@@ -1,0 +1,6 @@
+# Arducam ToF camera: Arducam's publisher (src/Arducam_tof_camera) run by
+# scripts/arducam_tof_node.py, node name tof. It publishes /tof/points (PointCloud2, in frame_id)
+# and /tof/depth (Float32MultiArray, metres, row-major); see launch/sensors.launch.py.
+tof:
+  ros__parameters:
+    frame_id: tof_optical_frame       # urdf/manipulator.urdf.xacro

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!-- Semantic description of my LeKiwi (config/manipulator_moveit.urdf.xacro): the stock LeKiwi's
+     groups, poses and collision pairs, plus the pairs of my sensors. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="manipulator">
+
+  <xacro:include filename="$(find lekiwi_moveit_config)/config/lekiwi_semantic.xacro"/>
+  <xacro:lekiwi_semantic/>
+
+  <!-- My sensors. Generated with compute_disabled_collisions.py (lekiwi_moveit_config) after
+       changing the sensors or their poses; the command is in this package's README.
+       (No shell substitutions here: xacro evaluates them even in comments.)
+       Every arm link stays checked against the lidar, the base and the ground. The ToF camera
+       and the wrist camera have no geometry (frames only). -->
+  <disable_collisions link1="base_link" link2="lidar_base_link" reason="Never"/>
+  <disable_collisions link1="ground" link2="lidar_base_link" reason="Never"/>
+  <disable_collisions link1="left_motor" link2="lidar_base_link" reason="Never"/>
+  <disable_collisions link1="left_wheel_link" link2="lidar_base_link" reason="Never"/>
+  <disable_collisions link1="lidar_base_link" link2="rear_motor" reason="Never"/>
+  <disable_collisions link1="lidar_base_link" link2="rear_wheel_link" reason="Never"/>
+  <disable_collisions link1="lidar_base_link" link2="right_motor" reason="Never"/>
+  <disable_collisions link1="lidar_base_link" link2="right_wheel_link" reason="Never"/>
+  <disable_collisions link1="lidar_base_link" link2="so101_base_link" reason="Never"/>
+  <disable_collisions link1="lidar_base_link" link2="upper_plate_link" reason="Adjacent"/>
+
+</robot>

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>manipulator</name>
+  <version>0.1.0</version>
+  <description>My LeKiwi: the stock LeKiwi plus my sensors (LD06 lidar, Arducam ToF camera, wrist Pi Camera 3): model, MoveIt collision settings, sensor drivers and launch files</description>
+  <maintainer email="git@nrlewis.dev">Nathan Lewis</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>lekiwi_bringup</exec_depend>
+  <exec_depend>lekiwi_moveit_config</exec_depend>
+  <exec_depend>so101_moveit_config</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>moveit_configs_utils</exec_depend>
+  <!-- scripts/arducam_tof_node.py; it runs Arducam's publisher, which needs these -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>sensor_msgs_py</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>v4l-utils</exec_depend>  <!-- media-ctl: finds the ToF's video device -->
+  <!-- The sensor drivers are not dependencies: ldlidar_stl_ros2 and
+       arducam_rclpy_tof_pointcloud are submodules in src/, the Arducam SDK and camera_ros need
+       the Pi 5 camera stack. sensors.launch.py skips drivers that are not installed. -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

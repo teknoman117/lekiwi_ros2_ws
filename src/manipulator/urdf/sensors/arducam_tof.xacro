@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Arducam ToF camera: frames only, no geometry. ${name}_link is the point the depth data is
+       measured from (x along the optical axis, z up), placed on 'parent' by *origin.
+       ${name}_optical_frame is the driver's frame_id (REP 103 optical frame: z forward, x right,
+       y down); TF uses it to place the point cloud. -->
+  <xacro:macro name="arducam_tof" params="parent name:=tof *origin">
+    <link name="${name}_link"/>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <xacro:insert_block name="origin"/>
+    </joint>
+
+    <link name="${name}_optical_frame"/>
+    <joint name="${name}_optical_joint" type="fixed">
+      <parent link="${name}_link"/>
+      <child link="${name}_optical_frame"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+  </xacro:macro>
+
+</robot>

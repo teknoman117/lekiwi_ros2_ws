@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="manipulator">
+
+  <!-- My LeKiwi: the stock LeKiwi (lekiwi_bringup, unchanged; its xacro args port, baudrate and
+       use_mock_hardware pass through) plus my sensors. -->
+  <xacro:include filename="$(find lekiwi_bringup)/urdf/lekiwi.urdf.xacro"/>
+  <xacro:include filename="$(find manipulator)/urdf/sensors/ld06.xacro"/>
+  <xacro:include filename="$(find manipulator)/urdf/sensors/arducam_tof.xacro"/>
+  <xacro:include filename="$(find manipulator)/urdf/sensors/pi_camera3.xacro"/>
+
+  <!-- LD19 lidar: its base 100 mm back and 35 mm up from the centre of the top plate
+       (upper_plate_link: centre of the plate's top surface, x forward). The scan origin
+       (lidar_link) is scan_height above the base (urdf/sensors/ld06.xacro). The standoff under it
+       is not modelled. -->
+  <xacro:ld06 parent="upper_plate_link" name="lidar">
+    <origin xyz="-0.100 0 0.035" rpy="0 0 0"/>
+  </xacro:ld06>
+
+  <!-- ToF camera where the stock chassis camera was: its point cloud's origin is 100 mm forward
+       and 30 mm up from the centre of the bottom plate (base_link: centre of the plate's top
+       surface), looking forward. Frames only, no geometry. -->
+  <xacro:arducam_tof parent="base_link" name="tof">
+    <origin xyz="0.100 0 0.030" rpy="0 0 0"/>
+  </xacro:arducam_tof>
+
+  <!-- Pi Camera 3 on the wrist, on gripper_link (it turns with wrist_roll), looking along the
+       jaws (gripper_link's -z; the pitch of pi/2 turns the camera's x there). Frames only.
+       TODO: measure the mount; this pose is a placeholder. -->
+  <xacro:pi_camera3 parent="gripper_link" name="wrist_camera">
+    <origin xyz="-0.035 0 -0.045" rpy="0 ${pi/2} 0"/>
+  </xacro:pi_camera3>
+
+</robot>

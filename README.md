@@ -14,6 +14,7 @@ SO-101 arm) under ROS 2 Jazzy.
 | `so101_moveit_config` | MoveIt for the arm on its own (planning groups, IK, controllers) |
 | `lekiwi_moveit_config` | MoveIt for the arm on the LeKiwi, with collisions against the base and the ground |
 | `lekiwi_teleop` | the RViz marker follower (`arm_marker`) and the joystick teleop (`joy_teleop`) |
+| `manipulator` | my robot: the stock LeKiwi plus my sensors (lidar, ToF camera, wrist camera); see [Your own robot](#your-own-robot) |
 
 Each package has a README with the details. Third-party drivers: `ldlidar_stl_ros2` (LD19
 lidar, submodule in `src/`) and `arducam_rclpy_tof_pointcloud` (Arducam ToF, a symlink into the
@@ -152,6 +153,8 @@ container (`--name lekiwi` instead of `--rm`, then `docker start -ai lekiwi`).
 
 | Argument | Default | |
 |---|---|---|
+| `description_file` | `lekiwi_bringup/urdf/lekiwi.urdf.xacro` | the robot model |
+| `moveit_config_package` | `lekiwi_moveit_config` | MoveIt config for `move_group` (must match the model) |
 | `port` | `/dev/ttyACM0` | servo bus |
 | `use_mock_hardware` | `false` | simulated servos, for testing without the robot |
 | `limp` | `false` | torque never switched on; joint states only, nothing moves (see `lekiwi_bringup/README.md`) |
@@ -168,11 +171,27 @@ container (`--name lekiwi` instead of `--rm`, then `docker start -ai lekiwi`).
 | Argument | Default | |
 |---|---|---|
 | `rviz` | `true` | RViz with the MotionPlanning panel and the arm marker |
+| `moveit_config_package` | `lekiwi_moveit_config` | MoveIt and RViz config (must match the robot's) |
 | `joy` | `true` | start `joy_node` here, for a joystick plugged into the workstation |
 | `joy_device`, `joy_deadzone` | `0`, `0.166` | `joy_node` settings |
 
 For a joystick plugged into the robot: `robot.launch.py joy:=true` and
 `workstation.launch.py joy:=false`.
+
+## Your own robot
+
+Parts that are not in the LeKiwi project (sensors, mounts) go in a package of their own, so the
+stock packages stay generic. `manipulator` is mine: its model is the stock robot plus the sensor
+macros, its MoveIt config adds the sensors' collision pairs, and its launch files run the stock
+ones with `description_file` / `moveit_config_package` pointing at it, plus the sensor drivers:
+
+```bash
+ros2 launch manipulator robot.launch.py          # robot
+ros2 launch manipulator workstation.launch.py    # workstation
+```
+
+See `manipulator/README.md` for the sensors and for regenerating the collision pairs, and
+`lekiwi_moveit_config/README.md` for what such a package needs.
 
 ## Joystick
 
