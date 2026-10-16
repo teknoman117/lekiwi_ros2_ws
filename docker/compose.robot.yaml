@@ -38,15 +38,22 @@ services:
     environment: *robot-env
     devices:
       - ${SERIAL_DEVICE:-/dev/ttyACM0}:/dev/ttyACM0
+      # the LD19 lidar (the manipulator package), at the driver's /dev/ldlidar; /dev/null when not plugged in
+      - ${LIDAR_DEVICE:-/dev/null}:/dev/ldlidar
     volumes:
       - /dev/input:/dev/input         # joysticks, also ones plugged in later (joy:=true)
     device_cgroup_rules:
       - 'c 13:* rmw'                  # input devices
+    # The host groups of the devices. Compose rejects repeated ids: setup-env.sh replaces a
+    # repeat with an unused id (65534, 65533), and the defaults are distinct.
     group_add:
       - "${SERIAL_GID:-20}"           # the servo port's group on the host
-      - "${INPUT_GID:-20}"            # the joystick's group on the host
+      - "${INPUT_GID:-65534}"         # the joystick's group on the host
+      - "${LIDAR_GID:-65533}"         # the lidar port's group on the host
+    # ROBOT_LAUNCH: the package and launch file. Default: my robot with its sensors;
+    # "lekiwi_bringup robot.launch.py" for the stock LeKiwi.
     command: >-
-      ros2 launch lekiwi_bringup robot.launch.py
+      ros2 launch ${ROBOT_LAUNCH:-manipulator robot.launch.py}
       use_mock_hardware:=${USE_MOCK_HARDWARE:-false}
       limp:=${LIMP:-false}
       marker_mode:=${MARKER_MODE:-free}

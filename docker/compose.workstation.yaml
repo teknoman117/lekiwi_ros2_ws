@@ -41,12 +41,17 @@ services:
       - /dev/dri:/dev/dri
     device_cgroup_rules:
       - 'c 13:* rmw'                  # input devices
+    # The host groups of the GPU and the joystick. Compose rejects repeated ids: setup-env.sh
+    # replaces a repeat with an unused id (65534, 65533), and the defaults are distinct.
     group_add:
       - "${VIDEO_GID:-44}"
-      - "${RENDER_GID:-44}"
-      - "${INPUT_GID:-44}"
+      - "${RENDER_GID:-65534}"
+      - "${INPUT_GID:-65533}"
+    # WORKSTATION_LAUNCH: the package and launch file. Default: my robot (its model, and the
+    # lidar scan and ToF point cloud in RViz); "lekiwi_bringup workstation.launch.py" for the
+    # stock LeKiwi.
     command: >-
-      ros2 launch lekiwi_bringup workstation.launch.py
+      ros2 launch ${WORKSTATION_LAUNCH:-manipulator workstation.launch.py}
       rviz:=${WORKSTATION_RVIZ:-true}
       joy:=${WORKSTATION_JOY:-true}
       joy_device:=${JOY_DEVICE:-0}

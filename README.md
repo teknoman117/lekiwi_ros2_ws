@@ -72,7 +72,8 @@ docker compose -f docker/compose.workstation.yaml up --build
   move) or changing hardware.
 - **Launch options** are environment variables: `MARKER_MODE`, `MARKER_SPEED`, `LIMP`,
   `ROBOT_JOY` / `WORKSTATION_JOY` (where the joystick is plugged in), `JOY_DEVICE`,
-  `JOY_DEADZONE`, `SERIAL_DEVICE` (use the stable `/dev/serial/by-id/...` link), e.g.
+  `JOY_DEADZONE`, `SERIAL_DEVICE` (use the stable `/dev/serial/by-id/...` link), `LIDAR_DEVICE`
+  (`/dev/ldlidar`, or `/dev/null` without a lidar), e.g.
   `MARKER_MODE=planar docker compose -f docker/compose.robot.yaml up -d`.
 - **CLI**: `docker compose -f docker/compose.robot.yaml run --rm shell` (or the workstation
   file) opens a shell with the workspace sourced, as a super client.
@@ -190,7 +191,9 @@ ros2 launch manipulator robot.launch.py          # robot
 ros2 launch manipulator workstation.launch.py    # workstation
 ```
 
-See `manipulator/README.md` for the sensors and for regenerating the collision pairs, and
+With Docker these are the defaults (`ROBOT_LAUNCH`, `WORKSTATION_LAUNCH`; set them to
+`lekiwi_bringup robot.launch.py` / `lekiwi_bringup workstation.launch.py` for the stock robot). See
+`manipulator/README.md` for the sensors and for regenerating the collision pairs, and
 `lekiwi_moveit_config/README.md` for what such a package needs.
 
 ## Joystick

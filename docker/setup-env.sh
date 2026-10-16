@@ -69,6 +69,15 @@ if [[ $role == robot ]]; then
     set_default MARKER_SPEED 0.08
     set_default ROBOT_JOY false
     [[ -e $serial ]] || echo "warning: $serial does not exist (set SERIAL_DEVICE)" >&2
+    # the LD19 lidar: the driver's udev rule creates /dev/ldlidar
+    if [[ -e /dev/ldlidar ]]; then
+        set_value LIDAR_DEVICE /dev/ldlidar
+        set_value LIDAR_GID "$(stat -L -c %g /dev/ldlidar)"
+    else
+        set_default LIDAR_DEVICE /dev/null
+        set_default LIDAR_GID "${value[SERIAL_GID]}"
+        echo "note: /dev/ldlidar does not exist (lidar unplugged, or the udev rule missing)" >&2
+    fi
 else
     set_default ROBOT_IP ""
     set_default WORKSTATION_RVIZ true
@@ -80,6 +89,24 @@ else
     xauth=${XAUTHORITY:-$HOME/.Xauthority}
     [[ -f $xauth ]] && set_value XAUTHORITY_FILE "$xauth" || set_value XAUTHORITY_FILE ""
     [[ -n ${value[ROBOT_IP]} ]] || echo "note: ROBOT_IP is not set; set it in $PWD/$env_file or the environment" >&2
+fi
+
+# Compose rejects repeated ids in group_add: replace a repeat with an unused id
+unique_groups() {
+    local seen=() spare=(65534 65533) key gid
+    for key in "$@"; do
+        gid=${value[$key]}
+        if [[ " ${seen[*]} " == *" $gid "* ]]; then
+            gid=${spare[0]}; spare=("${spare[@]:1}")
+            set_value "$key" "$gid"
+        fi
+        seen+=("$gid")
+    done
+}
+if [[ $role == robot ]]; then
+    unique_groups SERIAL_GID INPUT_GID LIDAR_GID
+else
+    unique_groups VIDEO_GID RENDER_GID INPUT_GID
 fi
 
 {

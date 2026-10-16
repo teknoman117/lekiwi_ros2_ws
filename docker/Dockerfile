@@ -34,24 +34,31 @@ CMD ["bash"]
 
 # --- package manifests only, so dependency layers survive source changes -----------------------
 FROM base AS manifests
+# third_party: repositories whose ROS packages are symlinked into src/ (see third_party/README.md)
+COPY third_party /tmp/third_party
 COPY src /tmp/src
 RUN mkdir -p /tmp/manifests \
     && cd /tmp/src \
-    && find . -name package.xml -not -path '*/test/*' -exec cp --parents {} /tmp/manifests \;
+    && find -L . -name package.xml -not -path '*/test/*' -exec cp --parents {} /tmp/manifests \;
 
 # --- robot ---------------------------------------------------------------------------------------
 FROM base AS robot-deps
-COPY --from=manifests /tmp/manifests ${WORKSPACE}/src
+# The manifests stay out of src/: there, src/ gets symlinks that must not meet directories.
+COPY --from=manifests /tmp/manifests /tmp/manifests
 # All packages, without the GUI-only dependencies and without test dependencies. No '-r': a
-# dependency that cannot be resolved fails the build.
+# dependency that cannot be resolved fails the build. (ament_python: Arducam's package.xml lists
+# the build type as a build tool; it is not a rosdep key.)
 RUN apt-get update \
-    && rosdep install -y --from-paths ${WORKSPACE}/src --ignore-src --rosdistro "${ROS_DISTRO}" \
+    && rosdep install -y --from-paths /tmp/manifests --ignore-src --rosdistro "${ROS_DISTRO}" \
         --dependency-types build --dependency-types buildtool --dependency-types build_export \
         --dependency-types buildtool_export --dependency-types exec \
-        --skip-keys "rviz2 moveit_ros_visualization joint_state_publisher_gui" \
-    && rm -rf /var/lib/apt/lists/*
+        --skip-keys "rviz2 moveit_ros_visualization joint_state_publisher_gui ament_python" \
+    && rm -rf /var/lib/apt/lists/* /tmp/manifests
 
 FROM robot-deps AS robot
+COPY third_party ${WORKSPACE}/third_party
+# colcon.meta: per-package build settings (e.g. a compile fix for ldlidar_stl_ros2)
+COPY colcon.meta ${WORKSPACE}/colcon.meta
 COPY src ${WORKSPACE}/src
 RUN cd ${WORKSPACE} \
     && source /opt/ros/${ROS_DISTRO}/setup.bash \
@@ -62,21 +69,23 @@ WORKDIR /home/lekiwi
 
 # --- workstation ---------------------------------------------------------------------------------
 FROM base AS workstation-deps
-COPY --from=manifests /tmp/manifests ${WORKSPACE}/src
-# Only what RViz needs: the robot model, the meshes, the MoveIt configs (RViz's MotionPlanning
-# panel loads the SRDF and the IK plugin) and the launch file. Not the servo driver or teleop
-# (ignored by colcon too: the descriptions name waveshare_servos as a run dependency).
+COPY --from=manifests /tmp/manifests /tmp/manifests
+# What RViz needs: the robot models, the meshes, the MoveIt configs (RViz's MotionPlanning panel
+# loads the SRDF and the IK plugin) and the launch files, for every package in the workspace
+# (so a package like manipulator, my own robot, is included). Not the servo driver (and colcon ignores it and the
+# teleop nodes, which run on the robot).
 RUN apt-get update \
     && rosdep install -y --rosdistro "${ROS_DISTRO}" --ignore-src \
-        --from-paths ${WORKSPACE}/src/lekiwi_description ${WORKSPACE}/src/so101_description \
-                     ${WORKSPACE}/src/lekiwi_bringup ${WORKSPACE}/src/so101_moveit_config \
-                     ${WORKSPACE}/src/lekiwi_moveit_config \
+        --from-paths /tmp/manifests \
         --dependency-types build --dependency-types buildtool --dependency-types build_export \
         --dependency-types buildtool_export --dependency-types exec \
-        --skip-keys "waveshare_servos" \
-    && rm -rf /var/lib/apt/lists/*
+        --skip-keys "waveshare_servos ament_python" \
+    && rm -rf /var/lib/apt/lists/* /tmp/manifests
 
 FROM workstation-deps AS workstation
+COPY third_party ${WORKSPACE}/third_party
+# colcon.meta: per-package build settings (e.g. a compile fix for ldlidar_stl_ros2)
+COPY colcon.meta ${WORKSPACE}/colcon.meta
 COPY src ${WORKSPACE}/src
 RUN cd ${WORKSPACE} \
     && source /opt/ros/${ROS_DISTRO}/setup.bash \

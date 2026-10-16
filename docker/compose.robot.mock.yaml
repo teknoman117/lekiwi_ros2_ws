@@ -3,11 +3,11 @@
 #   docker compose -f docker/compose.robot.yaml -f docker/compose.robot.mock.yaml up --build
 services:
   robot:
-    devices: !reset []
+    devices: !reset []                # no servo board (the lidar too: run sensors:=false)
     environment:
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
       ROS_DISCOVERY_SERVER: 127.0.0.1:${DISCOVERY_PORT:-11811}
     command: >-
-      ros2 launch lekiwi_bringup robot.launch.py use_mock_hardware:=true
+      ros2 launch ${ROBOT_LAUNCH:-manipulator robot.launch.py} use_mock_hardware:=true
       marker_mode:=${MARKER_MODE:-free} joy:=${ROBOT_JOY:-false}
     restart: "no"
