@@ -1,0 +1,131 @@
+// LeKiwi ROS 2 architecture. Source of architecture.svg: run docs/make_architecture.sh after
+// editing. Images are relative to docs/assets/logos (the script embeds them in the SVG).
+digraph lekiwi {
+    graph [rankdir=TB, labelloc=t, labeljust=l, fontname="Helvetica", fontsize=13, bgcolor="white", pad=0.3,
+           nodesep=0.45, ranksep=0.55, compound=true, newrank=true]
+    label=<
+      <TABLE BORDER="0" CELLSPACING="6">
+        <TR><TD FIXEDSIZE="TRUE" WIDTH="170" HEIGHT="45"><IMG SRC="ros.png" SCALE="TRUE"/></TD>
+            <TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="22"><B>LeKiwi</B></FONT><BR/><FONT POINT-SIZE="13" COLOR="#555555">ROS 2 Jazzy: how the pieces interact</FONT></TD></TR>
+      </TABLE>>
+    node  [shape=plaintext, fontname="Helvetica", fontsize=12]
+    edge  [fontname="Helvetica", fontsize=10, color="#22314e", fontcolor="#22314e", arrowsize=0.7]
+
+
+    // ---- workstation --------------------------------------------------------------------------
+    subgraph cluster_ws {
+        label=<<B>Workstation</B>  <FONT COLOR="#555555">workstation.launch.py</FONT>>
+        style="rounded,filled"; fillcolor="#f3f6fb"; color="#9aa9c4"; margin=14
+
+        rviz [label=<
+          <TABLE BORDER="1" COLOR="#9aa9c4" BGCOLOR="white" CELLPADDING="6" CELLSPACING="0" STYLE="ROUNDED">
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="48" HEIGHT="48"><IMG SRC="rviz.png" SCALE="TRUE"/></TD>
+                <TD ALIGN="LEFT" BALIGN="LEFT"><B>RViz</B><BR/><FONT POINT-SIZE="10">MotionPlanning panel<BR/>arm marker<BR/>scan, point cloud, camera</FONT></TD></TR>
+          </TABLE>>]
+
+        joy [label=<
+          <TABLE BORDER="1" COLOR="#9aa9c4" BGCOLOR="white" CELLPADDING="8" CELLSPACING="0" STYLE="ROUNDED">
+            <TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>joy_node</B><BR/><FONT POINT-SIZE="10">gamepad driver (joy)<BR/>or on the robot: joy:=true</FONT></TD></TR>
+          </TABLE>>]
+    }
+
+    // ---- robot --------------------------------------------------------------------------------
+    subgraph cluster_robot {
+        label=<<B>Robot</B>  <FONT COLOR="#555555">robot.launch.py: all the computation</FONT>>
+        style="rounded,filled"; fillcolor="#f6f8f3"; color="#a9b98f"; margin=14
+
+        subgraph cluster_teleop {
+            label=<<B>Teleop</B>  <FONT COLOR="#555555">lekiwi_teleop</FONT>>
+            style="rounded,filled"; fillcolor="white"; color="#c4cdb3"
+
+            joy_teleop [label=<
+              <TABLE BORDER="0" CELLPADDING="4"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>joy_teleop</B><BR/><FONT POINT-SIZE="10">sticks: base velocity<BR/>d-pad, buttons: arm goal, pitch,<BR/>orbit, gripper</FONT></TD></TR></TABLE>>]
+            arm_marker [label=<
+              <TABLE BORDER="0" CELLPADDING="4"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>arm_marker</B><BR/><FONT POINT-SIZE="10">goal-pose follower<BR/>modes: free, claw, planar<BR/>streams short trajectories</FONT></TD></TR></TABLE>>]
+        }
+
+        move_group [label=<
+          <TABLE BORDER="1" COLOR="#c4cdb3" BGCOLOR="white" CELLPADDING="6" CELLSPACING="0" STYLE="ROUNDED">
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="150" HEIGHT="27"><IMG SRC="moveit2.png" SCALE="TRUE"/></TD></TR>
+            <TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>move_group</B><BR/><FONT POINT-SIZE="10">planning, IK (pick_ik)<BR/>collisions: arm, base, ground<BR/>lekiwi_moveit_config</FONT></TD></TR>
+          </TABLE>>]
+
+        rsp [label=<
+          <TABLE BORDER="1" COLOR="#c4cdb3" BGCOLOR="white" CELLPADDING="6" CELLSPACING="0" STYLE="ROUNDED">
+            <TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>robot_state_publisher</B><BR/><FONT POINT-SIZE="10">URDF: lekiwi_bringup<BR/>= lekiwi_description (base)<BR/>+ so101_description (arm)</FONT></TD></TR>
+          </TABLE>>]
+
+        subgraph cluster_r2c {
+            label=<
+              <TABLE BORDER="0" CELLSPACING="0"><TR>
+                <TD FIXEDSIZE="TRUE" WIDTH="34" HEIGHT="34"><IMG SRC="ros2_control.png" SCALE="TRUE"/></TD>
+                <TD><B> ros2_control</B> <FONT COLOR="#555555">controller_manager</FONT></TD></TR></TABLE>>
+            style="rounded,filled"; fillcolor="white"; color="#c4cdb3"
+
+            arm_controller [label=<<TABLE BORDER="1" COLOR="#d5dbc9" CELLPADDING="5" CELLSPACING="0" STYLE="ROUNDED"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>arm_controller</B><BR/><FONT POINT-SIZE="10">joint trajectory</FONT></TD></TR></TABLE>>]
+            gripper_controller [label=<<TABLE BORDER="1" COLOR="#d5dbc9" CELLPADDING="5" CELLSPACING="0" STYLE="ROUNDED"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>gripper_controller</B><BR/><FONT POINT-SIZE="10">parallel gripper action</FONT></TD></TR></TABLE>>]
+            base_controller [label=<<TABLE BORDER="1" COLOR="#d5dbc9" CELLPADDING="5" CELLSPACING="0" STYLE="ROUNDED"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>omni_wheel_drive_controller</B><BR/><FONT POINT-SIZE="10">base twist to wheel speeds</FONT></TD></TR></TABLE>>]
+            jsb [label=<<TABLE BORDER="1" COLOR="#d5dbc9" CELLPADDING="5" CELLSPACING="0" STYLE="ROUNDED"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>joint_state_broadcaster</B></TD></TR></TABLE>>]
+            hw [label=<<TABLE BORDER="1" COLOR="#a9b98f" BGCOLOR="#eef2e6" CELLPADDING="6" CELLSPACING="0" STYLE="ROUNDED"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>waveshare_servos</B><BR/><FONT POINT-SIZE="10">hardware interface<BR/>(mock_components with<BR/>use_mock_hardware:=true)</FONT></TD></TR></TABLE>>]
+        }
+
+        subgraph cluster_sensors {
+            label=<<B>Sensors</B>  <FONT COLOR="#555555">manipulator, optional</FONT>>
+            style="rounded,dashed"; color="#a9b98f"
+
+            lidar [label=<<TABLE BORDER="0" CELLPADDING="3"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>ldlidar_stl_ros2</B><BR/><FONT POINT-SIZE="10">LD19 lidar</FONT></TD></TR></TABLE>>]
+            tof [label=<<TABLE BORDER="0" CELLPADDING="3"><TR><TD ALIGN="LEFT" BALIGN="LEFT"><B>arducam_tof_node</B><BR/><FONT POINT-SIZE="10">ToF depth camera</FONT></TD></TR></TABLE>>]
+        }
+
+        discovery [label=<
+          <TABLE BORDER="1" COLOR="#c4cdb3" BGCOLOR="white" CELLPADDING="6" CELLSPACING="0" STYLE="ROUNDED">
+            <TR><TD FIXEDSIZE="TRUE" WIDTH="105" HEIGHT="25"><IMG SRC="fastdds.png" SCALE="TRUE"/></TD></TR>
+            <TR><TD><B>discovery server</B><BR/><FONT POINT-SIZE="10">every node on both machines<BR/>finds the others through it</FONT></TD></TR>
+          </TABLE>>]
+    }
+
+    qr [label=<
+      <TABLE BORDER="0" CELLSPACING="4">
+        <TR><TD FIXEDSIZE="TRUE" WIDTH="96" HEIGHT="96"><IMG SRC="repo_qr.png" SCALE="TRUE"/></TD>
+            <TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="10" COLOR="#555555">Source, docs and<BR/>launch instructions:</FONT><BR/><FONT POINT-SIZE="11">github.com/teknoman117/<BR/>lekiwi_ros2_ws</FONT></TD></TR>
+      </TABLE>>]
+
+    servos [label=<
+      <TABLE BORDER="0" CELLSPACING="2">
+        <TR><TD FIXEDSIZE="TRUE" WIDTH="150" HEIGHT="126"><IMG SRC="lekiwi.png" SCALE="TRUE"/></TD></TR>
+        <TR><TD><B>Servo bus</B><BR/><FONT POINT-SIZE="10">arm: IDs 1-6 · wheels: IDs 7-9</FONT></TD></TR>
+      </TABLE>>]
+
+    // ---- layout: workstation | teleop | moveit, rsp | ros2_control | hardware -----------------
+    { rank=same; rviz; joy; }
+    { rank=same; joy_teleop; arm_marker; }
+    { rank=same; move_group; rsp; lidar; tof; }
+    { rank=same; arm_controller; gripper_controller; base_controller; }
+    { rank=same; hw; jsb; }
+    { rank=same; qr; servos; }
+    rviz -> qr [style=invis, weight=10]
+    qr -> servos [style=invis]
+
+    // ---- data flow ----------------------------------------------------------------------------
+    joy -> joy_teleop [label="/joy"]
+    rviz -> arm_marker [label="interactive marker\n/arm_marker", dir=both]
+    rviz -> move_group [label="plan + execute\n/move_action"]
+    joy_teleop -> arm_marker [dir=both, label="twist_cmd (arm velocity)\ngoal (orbit centre)"]
+    arm_marker -> move_group [label="IK, FK, mode moves\n/compute_ik /compute_fk"]
+    arm_marker -> arm_controller [label="streamed trajectories\n/arm_controller/joint_trajectory"]
+    move_group -> arm_controller [label="follow_joint_trajectory"]
+    move_group -> gripper_controller [label="gripper_cmd"]
+    joy_teleop -> gripper_controller [label="gripper_cmd"]
+    joy_teleop -> base_controller [label="/omni_wheel_drive_controller/cmd_vel"]
+
+    arm_controller -> hw
+    gripper_controller -> hw
+    base_controller -> hw
+    hw -> jsb [label="positions,\nvelocities", minlen=2]
+    hw -> servos [label="serial", dir=both, penwidth=2]
+    jsb -> rsp [label="/joint_states"]
+    rsp -> rviz [label="/tf, /robot_description", constraint=false, color="#7a8aa8", fontcolor="#7a8aa8"]
+
+    lidar -> rviz [label="/scan", style=dashed, constraint=false, color="#7a8aa8", fontcolor="#7a8aa8"]
+    tof -> rviz [label="/tof/points", style=dashed, constraint=false, color="#7a8aa8", fontcolor="#7a8aa8"]
+}

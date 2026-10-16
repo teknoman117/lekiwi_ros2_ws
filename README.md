@@ -37,6 +37,24 @@ robot (robot.launch.py)                                     workstation (worksta
   joy_teleop (joystick -> base and arm)
 ```
 
+## Architecture
+
+![LeKiwi ROS 2 architecture](docs/architecture.svg)
+
+- **ros2_control** owns the hardware. `waveshare_servos` drives the servo bus, one bus for the
+  arm and the wheels. With `use_mock_hardware:=true`, `mock_components` takes its place. With
+  `limp:=true` the hardware starts with torque off, and only the joint states run.
+- **MoveIt** (`move_group`) never touches the hardware. It plans, solves IK and checks
+  collisions, then sends trajectories to the controllers.
+- **Teleop** uses MoveIt for IK and for the moves into a mode. While following the marker or the
+  joystick, `arm_marker` streams short trajectories straight to `arm_controller`. `joy_teleop`
+  drives the base directly, moves the arm through `arm_marker`, and orbits the base around the
+  arm's goal.
+- **Discovery**: nodes on both machines find each other through the Fast DDS discovery server on
+  the robot (see [Docker](#docker-recommended)).
+
+The diagram's source is `docs/architecture.dot`; run `docs/make_architecture.sh` after editing it.
+
 ## Docker (recommended)
 
 `docker/` builds two images on the machine that runs them (amd64 or arm64, from the
