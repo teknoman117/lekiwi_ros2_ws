@@ -19,3 +19,9 @@
 [submodule "src/so101_moveit_config"]
 	path = src/so101_moveit_config
 	url = https://github.com/teknoman117/so101_moveit_config
+[submodule "src/ldlidar_stl_ros2"]
+	path = src/ldlidar_stl_ros2
+	url = https://github.com/ldrobotSensorTeam/ldlidar_stl_ros2
+[submodule "third_party/Arducam_tof_camera"]
+	path = third_party/Arducam_tof_camera
+	url = https://github.com/ArduCAM/Arducam_tof_camera

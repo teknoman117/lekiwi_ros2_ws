@@ -15,7 +15,11 @@ SO-101 arm) under ROS 2 Jazzy.
 | `lekiwi_moveit_config` | MoveIt for the arm on the LeKiwi, with collisions against the base and the ground |
 | `lekiwi_teleop` | the RViz marker follower (`arm_marker`) and the joystick teleop (`joy_teleop`) |
 
-Each package has a README with the details.
+Each package has a README with the details. Third-party drivers: `ldlidar_stl_ros2` (LD19
+lidar, submodule in `src/`) and `arducam_rclpy_tof_pointcloud` (Arducam ToF, a symlink into the
+`third_party/Arducam_tof_camera` submodule, see `third_party/README.md`). `colcon.meta` holds
+per-package build settings (a compile fix for `ldlidar_stl_ros2` on Jazzy); colcon reads it
+from the workspace root.
 
 ## Robot / workstation split
 

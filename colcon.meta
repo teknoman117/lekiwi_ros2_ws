@@ -1,0 +1,7 @@
+{
+    "names": {
+        "ldlidar_stl_ros2": {
+            "cmake-args": ["-DCMAKE_CXX_FLAGS=-include pthread.h"]
+        }
+    }
+}
