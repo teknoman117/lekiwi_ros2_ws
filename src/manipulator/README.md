@@ -92,20 +92,22 @@ command (`cmd_vel_timeout`).
    that the box removes all of the arm, and nothing outside the robot.
 4. `robot_radius` (0.18 m in `config/nav2_params.yaml`): the base plus the stowed arm.
 
-**Build a map**: `nav:=mapping` (Docker: `NAV=mapping`). Drive around slowly with the joystick,
+**Build a map**: `nav:=mapping` (Docker: `--profile mapping`, see the workspace README). Drive around slowly with the joystick,
 and turn slowly (under ~0.5 rad/s): the LD19 takes 0.1 s per turn, so a fast turn smears the
 scan. Go back to rooms already seen to close loops. Then save it, in the robot's `shell`:
 
 ```bash
 ros2 service call /slam_toolbox/serialize_map slam_toolbox/srv/SerializePoseGraph \
   "{filename: '/maps/apartment'}"                       # for nav:=localization
-ros2 run nav2_map_server map_saver_cli -f /maps/apartment   # an image of it (.pgm, .yaml)
+ros2 run nav2_map_server map_saver_cli -f /maps/apartment \
+  --ros-args -p save_map_timeout:=10.0                  # an image of it (.pgm, .yaml)
 ```
 
 You can already send goals while mapping (RViz: 2D Goal Pose).
 
-**Navigate in it**: `nav:=localization map:=/maps/apartment` (Docker: `NAV=localization`,
-`NAV_MAP=/maps/apartment`; `/maps` is `MAPS_DIR` on the host, default `lekiwi_ros2_ws/maps`).
+**Navigate in it**: `nav:=localization map:=/maps/apartment` (Docker: `--profile localization`,
+the map from `NAV_MAP`, default `/maps/apartment`; `/maps` is `MAPS_DIR` on the host, default
+`lekiwi_ros2_ws/maps`).
 In RViz, set the fixed frame to `map`, give the robot's pose with 2D Pose Estimate, then goals
 with 2D Goal Pose.
 

@@ -1,14 +1,27 @@
 # Override for running the robot side without the servo board (mock hardware), e.g. on a
-# workstation for testing:
+# workstation for testing, in any of compose.robot.yaml's modes:
 #   docker compose -f docker/compose.robot.yaml -f docker/compose.robot.mock.yaml up --build
+#   docker compose -f docker/compose.robot.yaml -f docker/compose.robot.mock.yaml --profile mapping up --build
+x-mock: &mock
+  devices: !reset []                # no servo board (the lidar too: run sensors:=false)
+  environment:
+    ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+    ROS_DISCOVERY_SERVER: 127.0.0.1:${DISCOVERY_PORT:-11811}
+  restart: "no"
+
 services:
   robot:
-    devices: !reset []                # no servo board (the lidar too: run sensors:=false)
-    environment:
-      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
-      ROS_DISCOVERY_SERVER: 127.0.0.1:${DISCOVERY_PORT:-11811}
+    <<: *mock
     command: >-
       ros2 launch ${ROBOT_LAUNCH:-manipulator robot.launch.py} use_mock_hardware:=true
       marker_mode:=${MARKER_MODE:-free} joy:=${ROBOT_JOY:-false}
-      nav:=${NAV:-false} map:=${NAV_MAP:-}
-    restart: "no"
+  mapping:
+    <<: *mock
+    command: >-
+      ros2 launch manipulator robot.launch.py use_mock_hardware:=true nav:=mapping
+      marker_mode:=${MARKER_MODE:-free} joy:=${ROBOT_JOY:-false}
+  localization:
+    <<: *mock
+    command: >-
+      ros2 launch manipulator robot.launch.py use_mock_hardware:=true nav:=localization
+      map:=${NAV_MAP:-/maps/apartment} marker_mode:=${MARKER_MODE:-free} joy:=${ROBOT_JOY:-false}

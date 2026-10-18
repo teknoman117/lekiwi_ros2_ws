@@ -95,8 +95,13 @@ docker compose -f docker/compose.workstation.yaml up --build
   `MARKER_MODE=planar docker compose -f docker/compose.robot.yaml up -d`.
 - **CLI**: `docker compose -f docker/compose.robot.yaml run --rm shell` (or the workstation
   file) opens a shell with the workspace sourced, as a super client.
+- **Modes** are Compose profiles, one robot service each: `robot` (the default, from
+  `COMPOSE_PROFILES` in `docker/.env`), `mapping` and `localization` (Navigation, below), e.g.
+  `docker compose -f docker/compose.robot.yaml --profile mapping up -d`. One at a time: stop the
+  running mode before starting another.
 - **Stopping** sends SIGINT, like Ctrl-C: the servo driver stops the wheels only on a clean
-  shutdown. `docker compose -f docker/compose.robot.yaml down`.
+  shutdown. `docker compose -f docker/compose.robot.yaml --profile '*' down` stops any mode (a
+  plain `down` only the default one).
 - **Without the robot** (mock hardware), e.g. on the workstation:
   `docker compose -f docker/compose.robot.yaml -f docker/compose.robot.mock.yaml up --build`,
   and `ROBOT_IP=127.0.0.1` for the workstation side.
@@ -213,8 +218,82 @@ ros2 launch manipulator workstation.launch.py    # workstation
 With Docker these are the defaults (`ROBOT_LAUNCH`, `WORKSTATION_LAUNCH`; set them to
 `lekiwi_bringup robot.launch.py` / `lekiwi_bringup workstation.launch.py` for the stock robot). See
 `manipulator/README.md` for the sensors, navigation (slam_toolbox and Nav2: `nav:=mapping`,
-`nav:=localization`; Docker `NAV`, `NAV_MAP`) and regenerating the collision pairs, and
+`nav:=localization`; Docker profiles `mapping`, `localization`) and regenerating the collision pairs, and
 `lekiwi_moveit_config/README.md` for what such a package needs.
+
+## Navigation
+
+slam_toolbox and Nav2 (MPPI, omni motion model), on the robot with my model (`manipulator`):
+`robot.launch.py nav:=...` adds them, and twist_mux, to the usual robot. The joystick always
+wins over Nav2. Details, the velocity chain and tuning: `manipulator/README.md`, Navigation.
+
+Each stage is a separate launch of the robot; the workstation runs `workstation.launch.py` (RViz)
+throughout. Below, native first, then Docker, where each mode is a Compose profile of
+`docker/compose.robot.yaml` (`robot`, `mapping`, `localization`). Docker's `/maps` is `MAPS_DIR`
+on the host (default `lekiwi_ros2_ws/maps`, created by `setup-env.sh robot`). Docker, between
+stages:
+
+```bash
+C="docker compose -f docker/compose.robot.yaml"
+$C --profile '*' down                       # stop whichever mode runs
+$C --profile mapping up -d                  # start the next one (mapping, localization, robot)
+$C logs -f mapping                          # its log: the service has the profile's name
+```
+
+**0. Once: check the base and the lidar** (`nav:=false`, the default). Odometry against a tape
+measure, and the scan steady in RViz (Fixed Frame `odom`) while the robot turns:
+`manipulator/README.md`, Navigation. Only after changing the wheels, the lidar or its mount.
+
+**1. Build a map.**
+
+```bash
+mkdir -p ~/maps
+ros2 launch manipulator robot.launch.py nav:=mapping          # Docker: --profile mapping up -d
+```
+
+In RViz, set Fixed Frame to `map`. Stow the arm (the lidar filter only removes the robot when
+the arm is over the base). Drive with the joystick, slowly, turning under ~0.5 rad/s, through
+every room, and back into rooms already seen so that slam_toolbox closes the loops.
+
+**2. Save it**, while the mapping launch still runs (another terminal on the robot; Docker:
+`docker compose -f docker/compose.robot.yaml run --rm shell`, with `/maps/apartment`):
+
+```bash
+ros2 service call /slam_toolbox/serialize_map slam_toolbox/srv/SerializePoseGraph \
+  "{filename: '$HOME/maps/apartment'}"                     # apartment.posegraph, .data: for stage 3
+ros2 run nav2_map_server map_saver_cli -f ~/maps/apartment --ros-args -p save_map_timeout:=10.0
+                                                           # apartment.pgm, .yaml: a picture only
+```
+
+`result=0` from the first one means saved. The second times out with the default 2 s ("Failed to
+spin map subscription"), hence the longer timeout.
+
+**3. Navigate in it.** Stop the mapping launch, then:
+
+```bash
+ros2 launch manipulator robot.launch.py nav:=localization map:=$HOME/maps/apartment
+        # Docker: --profile localization up -d (the map: NAV_MAP, default /maps/apartment)
+```
+
+In RViz (Fixed Frame `map`):
+
+1. **2D Pose Estimate** (`P`): click where the robot is, drag toward where it faces. The scan
+   should land on the map's walls.
+2. **2D Goal Pose** (`G`): click the destination, drag toward the heading it should end with. A
+   green path (Plan) appears and the robot follows it. A new goal replaces the current one.
+3. Touch the joystick to take over (stop) at any time.
+
+The launch is up when the robot's log shows `Managed nodes are active` (Nav2). Checks, from a
+shell on the robot:
+
+```bash
+ros2 action list | grep navigate_to_pose     # bt_navigator is up: RViz goals are taken
+ros2 topic echo /cmd_vel                     # Nav2's output (to twist_mux)
+ros2 topic echo /omni_wheel_drive_controller/cmd_vel   # twist_mux's output (to the base)
+```
+
+A goal with no plan: Nav2 is not up (above), the pose estimate is missing, or the goal is in a
+wall or unknown space. A plan but no motion: follow `/cmd_vel` to the base (above).
 
 ## Joystick
 

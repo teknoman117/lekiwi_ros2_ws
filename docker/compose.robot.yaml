@@ -1,10 +1,20 @@
 # Robot: the Fast DDS discovery server and robot.launch.py (servo driver and controllers,
 # move_group, arm_marker, joy_teleop). Host networking.
 #
+# One robot service per mode, each a Compose profile; run one at a time (they share the servo
+# bus). docker/.env sets COMPOSE_PROFILES=robot, so a plain "up" starts the robot without
+# navigation; --profile picks another mode instead.
+#
 #   docker/setup-env.sh robot                              # once: writes docker/.env
-#   docker compose -f docker/compose.robot.yaml up --build -d
-#   docker compose -f docker/compose.robot.yaml logs -f robot
-#   docker compose -f docker/compose.robot.yaml run --rm shell   # ros2 CLI on the robot
+#   docker compose -f docker/compose.robot.yaml up --build -d                         # robot
+#   docker compose -f docker/compose.robot.yaml --profile mapping up -d              # build a map
+#   docker compose -f docker/compose.robot.yaml --profile localization up -d         # navigate (NAV_MAP)
+#   docker compose -f docker/compose.robot.yaml --profile '*' down                   # stop any mode
+#   docker compose -f docker/compose.robot.yaml logs -f robot      # or mapping, localization
+#   docker compose -f docker/compose.robot.yaml run --rm shell     # ros2 CLI on the robot
+#
+# Switch modes with "--profile '*' down" first: "up" with another profile leaves the running
+# mode's container up, and the two would share the servo bus.
 #
 # Settings come from the environment or docker/.env (see .env.example).
 name: lekiwi-robot
@@ -26,6 +36,33 @@ x-robot-env: &robot-env
   ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
   ROS_DISCOVERY_SERVER: 127.0.0.1:${DISCOVERY_PORT:-11811}
 
+# Everything a robot service has but its profile and command: the devices, the maps, the groups.
+x-robot-service: &robot-service
+  <<: *robot
+  depends_on: [discovery]
+  environment: *robot-env
+  devices:
+    - ${SERIAL_DEVICE:-/dev/ttyACM0}:/dev/ttyACM0
+    # the LD19 lidar (the manipulator package), at the driver's /dev/ldlidar; /dev/null when not plugged in
+    - ${LIDAR_DEVICE:-/dev/null}:/dev/ldlidar
+  volumes:
+    - /dev/input:/dev/input         # joysticks, also ones plugged in later (joy:=true)
+    # slam_toolbox's maps (mapping saves here, localization loads NAV_MAP from here). Create
+    # it before the first start: the container's user must own it (setup-env.sh does).
+    - ${MAPS_DIR:-../maps}:/maps
+  device_cgroup_rules:
+    - 'c 13:* rmw'                  # input devices
+  # The host groups of the devices. Compose rejects repeated ids: setup-env.sh replaces a
+  # repeat with an unused id (65534, 65533), and the defaults are distinct.
+  group_add:
+    - "${SERIAL_GID:-20}"           # the servo port's group on the host
+    - "${INPUT_GID:-65534}"         # the joystick's group on the host
+    - "${LIDAR_GID:-65533}"         # the lidar port's group on the host
+  # Stop it like Ctrl-C: the servo driver stops the wheels only on a clean shutdown
+  stop_signal: SIGINT
+  stop_grace_period: 20s
+  restart: unless-stopped
+
 services:
   discovery:
     <<: *robot
@@ -33,28 +70,8 @@ services:
     restart: unless-stopped
 
   robot:
-    <<: *robot
-    depends_on: [discovery]
-    environment: *robot-env
-    devices:
-      - ${SERIAL_DEVICE:-/dev/ttyACM0}:/dev/ttyACM0
-      # the LD19 lidar (the manipulator package), at the driver's /dev/ldlidar; /dev/null when not plugged in
-      - ${LIDAR_DEVICE:-/dev/null}:/dev/ldlidar
-    volumes:
-      - /dev/input:/dev/input         # joysticks, also ones plugged in later (joy:=true)
-      # slam_toolbox's maps (nav:=mapping saves here, nav:=localization loads NAV_MAP from
-      # here). Create it before the first start: the container's user must own it.
-      - ${MAPS_DIR:-../maps}:/maps
-    device_cgroup_rules:
-      - 'c 13:* rmw'                  # input devices
-    # The host groups of the devices. Compose rejects repeated ids: setup-env.sh replaces a
-    # repeat with an unused id (65534, 65533), and the defaults are distinct.
-    group_add:
-      - "${SERIAL_GID:-20}"           # the servo port's group on the host
-      - "${INPUT_GID:-65534}"         # the joystick's group on the host
-      - "${LIDAR_GID:-65533}"         # the lidar port's group on the host
-    # ROBOT_LAUNCH: the package and launch file. Default: my robot with its sensors;
-    # "lekiwi_bringup robot.launch.py" for the stock LeKiwi.
+    <<: *robot-service
+    profiles: [robot]
     command: >-
       ros2 launch ${ROBOT_LAUNCH:-manipulator robot.launch.py}
       use_mock_hardware:=${USE_MOCK_HARDWARE:-false}
@@ -64,12 +81,37 @@ services:
       joy:=${ROBOT_JOY:-false}
       joy_device:=${JOY_DEVICE:-0}
       joy_deadzone:=${JOY_DEADZONE:-0.166}
-      nav:=${NAV:-false}
-      map:=${NAV_MAP:-}
-    # Stop it like Ctrl-C: the servo driver stops the wheels only on a clean shutdown
-    stop_signal: SIGINT
-    stop_grace_period: 20s
-    restart: unless-stopped
+
+  # The robot plus slam_toolbox (building a map), Nav2 and twist_mux. Save the map from the
+  # shell service into /maps (MAPS_DIR): manipulator/README.md, Navigation.
+  mapping:
+    <<: *robot-service
+    profiles: [mapping]
+    command: >-
+      ros2 launch manipulator robot.launch.py
+      nav:=mapping
+      use_mock_hardware:=${USE_MOCK_HARDWARE:-false}
+      marker_mode:=${MARKER_MODE:-free}
+      marker_speed:=${MARKER_SPEED:-0.08}
+      joy:=${ROBOT_JOY:-false}
+      joy_device:=${JOY_DEVICE:-0}
+      joy_deadzone:=${JOY_DEADZONE:-0.166}
+
+  # The robot plus slam_toolbox (localizing in NAV_MAP, a map saved while mapping), Nav2 and
+  # twist_mux. Goals from RViz.
+  localization:
+    <<: *robot-service
+    profiles: [localization]
+    command: >-
+      ros2 launch manipulator robot.launch.py
+      nav:=localization
+      map:=${NAV_MAP:-/maps/apartment}
+      use_mock_hardware:=${USE_MOCK_HARDWARE:-false}
+      marker_mode:=${MARKER_MODE:-free}
+      marker_speed:=${MARKER_SPEED:-0.08}
+      joy:=${ROBOT_JOY:-false}
+      joy_device:=${JOY_DEVICE:-0}
+      joy_deadzone:=${JOY_DEADZONE:-0.166}
 
   shell:
     <<: *robot
