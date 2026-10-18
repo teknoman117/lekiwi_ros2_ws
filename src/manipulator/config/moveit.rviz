@@ -48,6 +48,16 @@ Visualization Manager:
       Size (m): 0.01
       Color Transformer: Intensity
       Value: true
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: false
+      Name: Lidar raw (with the robot)
+      Topic:
+        Value: /scan_raw
+        Reliability Policy: Best Effort
+      Size (m): 0.01
+      Color Transformer: FlatColor
+      Color: 255; 0; 0
+      Value: false
     - Class: rviz_default_plugins/PointCloud2
       Enabled: true
       Name: ToF points
@@ -66,6 +76,46 @@ Visualization Manager:
         Value: /wrist_camera/image_raw
         Reliability Policy: Best Effort
       Value: true
+    # Navigation (robot.launch.py nav:=mapping or nav:=localization); set the fixed frame to
+    # map to see the robot move in it
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Map
+      Topic:
+        Value: /map
+        Durability Policy: Transient Local
+      Color Scheme: map
+      Alpha: 0.7
+      Value: true
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Global costmap
+      Topic:
+        Value: /global_costmap/costmap
+      Color Scheme: costmap
+      Alpha: 0.3
+      Value: true
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Local costmap
+      Topic:
+        Value: /local_costmap/costmap
+      Color Scheme: costmap
+      Alpha: 0.5
+      Value: true
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Name: Plan
+      Topic:
+        Value: /plan
+      Color: 25; 255; 0
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: MPPI trajectories
+      Topic:
+        Value: /trajectories
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -77,6 +127,13 @@ Visualization Manager:
       Hide Inactive Objects: true
     - Class: rviz_default_plugins/MoveCamera
     - Class: rviz_default_plugins/Select
+    # Navigation: the robot's pose in the map (slam_toolbox localization), and a goal (Nav2)
+    - Class: rviz_default_plugins/SetInitialPose
+      Topic:
+        Value: /initialpose
+    - Class: rviz_default_plugins/SetGoal
+      Topic:
+        Value: /goal_pose
   Value: true
   Views:
     Current:

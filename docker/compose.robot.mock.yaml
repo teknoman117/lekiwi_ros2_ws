@@ -10,4 +10,5 @@ services:
     command: >-
       ros2 launch ${ROBOT_LAUNCH:-manipulator robot.launch.py} use_mock_hardware:=true
       marker_mode:=${MARKER_MODE:-free} joy:=${ROBOT_JOY:-false}
+      nav:=${NAV:-false} map:=${NAV_MAP:-}
     restart: "no"

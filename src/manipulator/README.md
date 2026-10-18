@@ -27,12 +27,13 @@ ros2 launch manipulator workstation.launch.py
 - `robot.launch.py`: `lekiwi_bringup`'s `robot.launch.py` with `description_file` =
   `urdf/manipulator.urdf.xacro` and `moveit_config_package` = `manipulator`, plus
   `sensors.launch.py` (`sensors:=false` to leave the drivers out).
-- `sensors.launch.py`: `lidar`, `lidar_model` (`LDLiDAR_LD19`, or `LDLiDAR_LD06`), `lidar_port`
+- `sensors.launch.py`: `lidar`, `lidar_filter` (the robot out of `/scan`, below), `lidar_model` (`LDLiDAR_LD19`, or `LDLiDAR_LD06`), `lidar_port`
   (default `/dev/ldlidar`, the symlink the driver's udev rule creates), `tof`, `wrist_camera`. A driver that is not installed
   is skipped with a message.
 - `workstation.launch.py`: `lekiwi_bringup`'s `workstation.launch.py` with this package's MoveIt
   and RViz configs (the robot model with the sensors; LaserScan `/scan`, PointCloud2
-  `/tof/points`, Image `/wrist_camera/image_raw`).
+  `/tof/points`, Image `/wrist_camera/image_raw`), plus the navigation displays (below).
+- `robot.launch.py nav:=mapping` / `nav:=localization map:=...`: navigation, below.
 
 ## Files
 
@@ -43,6 +44,8 @@ ros2 launch manipulator workstation.launch.py
 | `config/manipulator_moveit.urdf.xacro` | MoveIt's model: the robot + the ground (`lekiwi_moveit_config/config/ground.xacro`) |
 | `config/manipulator.srdf.xacro` | the stock semantics (`lekiwi_semantic`) + the sensors' collision pairs |
 | `config/*.yaml` | driver parameters |
+| `config/slam_toolbox.yaml`, `config/nav2_params.yaml`, `config/twist_mux.yaml` | navigation |
+| `launch/navigation.launch.py`, `launch/slam.launch.py` | navigation: slam_toolbox, the Nav2 servers, twist_mux |
 | `launch/manipulator_moveit.py` | `lekiwi_moveit_config`'s builder with this package's model and SRDF |
 
 ## Collision pairs
@@ -59,6 +62,56 @@ ros2 run lekiwi_moveit_config compute_disabled_collisions.py \
 
 With `--new-only` it prints only pairs the SRDF does not have yet, so delete the old sensor
 pairs first.
+
+## Navigation
+
+slam_toolbox (map and `map -> odom` from `/scan` and the wheel odometry), Nav2 (MPPI, omni motion
+model) and twist_mux, all on the robot. `robot.launch.py nav:=...` adds `navigation.launch.py`
+and points joy_teleop at twist_mux:
+
+```
+joy_teleop -> /cmd_vel_joy (priority 100) --+
+Nav2 ... collision_monitor -> /cmd_vel (10) -+-> twist_mux -> /omni_wheel_drive_controller/cmd_vel
+```
+
+The joystick always wins: touch it to take over from Nav2, release it and Nav2 continues after
+0.5 s. Everything is TwistStamped. The omni controller stops the wheels 0.5 s after the last
+command (`cmd_vel_timeout`).
+
+**Before the first map**, check on the robot (in RViz, fixed frame `odom`):
+
+1. Odometry: drive 1 m forward, 1 m sideways and turn 360 degrees with the joystick, and compare
+   `/omni_wheel_drive_controller/odom` with a tape measure. More than ~5% off: fix
+   `wheel_radius`, `robot_radius` or `wheel_offset` in
+   `lekiwi_description/config/omni_controllers.yaml`, or a wheel's direction.
+2. Lidar: the scan must line up with the walls and stay still while the robot turns in place
+   (the lidar's 0 degree direction, TODO below).
+3. Self-hits: the lidar sees the arm. `sensors.launch.py` removes the points inside a box
+   around the robot (`config/lidar_filter.yaml`, `laser_filters`): the driver publishes
+   `/scan_raw`, the filter `/scan`. In RViz, enable "Lidar raw (with the robot)" (red) and check
+   that the box removes all of the arm, and nothing outside the robot.
+4. `robot_radius` (0.18 m in `config/nav2_params.yaml`): the base plus the stowed arm.
+
+**Build a map**: `nav:=mapping` (Docker: `NAV=mapping`). Drive around slowly with the joystick,
+and turn slowly (under ~0.5 rad/s): the LD19 takes 0.1 s per turn, so a fast turn smears the
+scan. Go back to rooms already seen to close loops. Then save it, in the robot's `shell`:
+
+```bash
+ros2 service call /slam_toolbox/serialize_map slam_toolbox/srv/SerializePoseGraph \
+  "{filename: '/maps/apartment'}"                       # for nav:=localization
+ros2 run nav2_map_server map_saver_cli -f /maps/apartment   # an image of it (.pgm, .yaml)
+```
+
+You can already send goals while mapping (RViz: 2D Goal Pose).
+
+**Navigate in it**: `nav:=localization map:=/maps/apartment` (Docker: `NAV=localization`,
+`NAV_MAP=/maps/apartment`; `/maps` is `MAPS_DIR` on the host, default `lekiwi_ros2_ws/maps`).
+In RViz, set the fixed frame to `map`, give the robot's pose with 2D Pose Estimate, then goals
+with 2D Goal Pose.
+
+Tuning, in `config/nav2_params.yaml`: speeds (`vx_max`, `vy_max`, `wz_max` in MPPI and
+`velocity_smoother`), `inflation_radius` (doorways), MPPI's `batch_size` (lower it if the
+controller warns that it misses its 20 Hz rate on the Pi).
 
 ## Drivers
 

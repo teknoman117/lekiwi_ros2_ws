@@ -1,0 +1,16 @@
+# twist_mux (navigation.launch.py): the joystick and Nav2 to the omni controller. Both inputs
+# are TwistStamped; the highest priority input that published within its timeout wins, so
+# touching the joystick takes over from Nav2. joy_teleop sends one zero command when the
+# sticks are released, then Nav2 gets the base back after the timeout.
+twist_mux:
+  ros__parameters:
+    use_stamped: true
+    topics:
+      joystick:
+        topic: /cmd_vel_joy
+        timeout: 0.5
+        priority: 100
+      navigation:
+        topic: /cmd_vel  # the end of Nav2's chain (collision_monitor)
+        timeout: 0.5
+        priority: 10

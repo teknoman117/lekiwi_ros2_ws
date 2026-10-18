@@ -20,6 +20,22 @@
   <exec_depend>sensor_msgs_py</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>v4l-utils</exec_depend>  <!-- media-ctl: finds the ToF's video device -->
+  <exec_depend>laser_filters</exec_depend>  <!-- sensors.launch.py: the robot out of /scan -->
+  <!-- Navigation (navigation.launch.py, slam.launch.py): the Nav2 servers it starts and their
+       plugins in config/nav2_params.yaml, not nav2_bringup (simulation and the other servers) -->
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
+  <exec_depend>nav2_common</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>nav2_controller</exec_depend>
+  <exec_depend>nav2_mppi_controller</exec_depend>
+  <exec_depend>nav2_planner</exec_depend>
+  <exec_depend>nav2_navfn_planner</exec_depend>
+  <exec_depend>nav2_behaviors</exec_depend>
+  <exec_depend>nav2_bt_navigator</exec_depend>
+  <exec_depend>nav2_velocity_smoother</exec_depend>
+  <exec_depend>nav2_collision_monitor</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>  <!-- map_saver_cli -->
   <!-- The sensor drivers are not dependencies: ldlidar_stl_ros2 and
        arducam_rclpy_tof_pointcloud are submodules in src/, the Arducam SDK and camera_ros need
        the Pi 5 camera stack. sensors.launch.py skips drivers that are not installed. -->

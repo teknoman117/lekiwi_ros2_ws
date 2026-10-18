@@ -42,6 +42,9 @@ services:
       - ${LIDAR_DEVICE:-/dev/null}:/dev/ldlidar
     volumes:
       - /dev/input:/dev/input         # joysticks, also ones plugged in later (joy:=true)
+      # slam_toolbox's maps (nav:=mapping saves here, nav:=localization loads NAV_MAP from
+      # here). Create it before the first start: the container's user must own it.
+      - ${MAPS_DIR:-../maps}:/maps
     device_cgroup_rules:
       - 'c 13:* rmw'                  # input devices
     # The host groups of the devices. Compose rejects repeated ids: setup-env.sh replaces a
@@ -61,6 +64,8 @@ services:
       joy:=${ROBOT_JOY:-false}
       joy_device:=${JOY_DEVICE:-0}
       joy_deadzone:=${JOY_DEADZONE:-0.166}
+      nav:=${NAV:-false}
+      map:=${NAV_MAP:-}
     # Stop it like Ctrl-C: the servo driver stops the wheels only on a clean shutdown
     stop_signal: SIGINT
     stop_grace_period: 20s

@@ -68,6 +68,10 @@ if [[ $role == robot ]]; then
     set_default MARKER_MODE free
     set_default MARKER_SPEED 0.08
     set_default ROBOT_JOY false
+    set_default NAV false
+    set_default NAV_MAP ""
+    set_default MAPS_DIR ../maps
+    mkdir -p "${value[MAPS_DIR]}"   # owned by this user, which the container runs as
     [[ -e $serial ]] || echo "warning: $serial does not exist (set SERIAL_DEVICE)" >&2
     # the LD19 lidar: the driver's udev rule creates /dev/ldlidar
     if [[ -e /dev/ldlidar ]]; then

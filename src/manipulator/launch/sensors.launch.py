@@ -30,14 +30,28 @@ def sensors(context):
 
     if enabled(context, 'lidar'):
         if available('ldlidar_stl_ros2'):
+            # With the filter, the driver publishes /scan_raw and the filter /scan (the robot
+            # removed, config/lidar_filter.yaml); without it, the driver publishes /scan.
+            lidar_filter = enabled(context, 'lidar_filter')
+            if lidar_filter and not available('laser_filters'):
+                missing('lidar_filter', 'laser_filters')
+                lidar_filter = False
             actions.append(Node(
                 package='ldlidar_stl_ros2', executable='ldlidar_stl_ros2_node', name='lidar',
                 output='screen',
                 parameters=[os.path.join(config, 'ld06.yaml'), {
                     'product_name': LaunchConfiguration('lidar_model').perform(context),
                     'port_name': LaunchConfiguration('lidar_port').perform(context),
+                    'topic_name': 'scan_raw' if lidar_filter else 'scan',
                 }],
             ))
+            if lidar_filter:
+                actions.append(Node(
+                    package='laser_filters', executable='scan_to_scan_filter_chain',
+                    name='scan_to_scan_filter_chain', output='screen',
+                    parameters=[os.path.join(config, 'lidar_filter.yaml')],
+                    remappings=[('scan', '/scan_raw'), ('scan_filtered', '/scan')],
+                ))
         else:
             missing('lidar', 'ldlidar_stl_ros2')
 
@@ -76,6 +90,10 @@ def generate_launch_description():
                               description='LDLiDAR_LD19 or LDLiDAR_LD06'),
         DeclareLaunchArgument('lidar_port', default_value='/dev/ldlidar',
                               description="The lidar's serial port (the driver's udev rule creates /dev/ldlidar)"),
+        DeclareLaunchArgument('lidar_filter', default_value='true',
+                              description='Remove the robot (the arm) from the scan: the driver '
+                                          'publishes /scan_raw, laser_filters /scan '
+                                          '(config/lidar_filter.yaml)'),
         DeclareLaunchArgument('tof', default_value='true', description='Arducam ToF camera'),
         DeclareLaunchArgument('tof_video_index', default_value='auto',
                               description="The ToF camera's /dev/videoN, or auto: the video "

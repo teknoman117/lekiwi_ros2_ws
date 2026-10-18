@@ -182,6 +182,7 @@ container (`--name lekiwi` instead of `--rm`, then `docker start -ai lekiwi`).
 | `marker_mode` | `free` | initial marker mode: `free`, `claw` or `planar` |
 | `marker_speed` | `0.08` | the follower's maximum gripper speed, m/s |
 | `joy_teleop` | `true` | start the joystick teleop |
+| `base_cmd_vel_topic` | `/omni_wheel_drive_controller/cmd_vel` | where the joystick teleop sends base commands (a twist_mux input with navigation) |
 | `joy` | `false` | start `joy_node` here, for a joystick plugged into the robot |
 | `joy_device`, `joy_deadzone` | `0`, `0.166` | `joy_node` settings |
 
@@ -211,7 +212,8 @@ ros2 launch manipulator workstation.launch.py    # workstation
 
 With Docker these are the defaults (`ROBOT_LAUNCH`, `WORKSTATION_LAUNCH`; set them to
 `lekiwi_bringup robot.launch.py` / `lekiwi_bringup workstation.launch.py` for the stock robot). See
-`manipulator/README.md` for the sensors and for regenerating the collision pairs, and
+`manipulator/README.md` for the sensors, navigation (slam_toolbox and Nav2: `nav:=mapping`,
+`nav:=localization`; Docker `NAV`, `NAV_MAP`) and regenerating the collision pairs, and
 `lekiwi_moveit_config/README.md` for what such a package needs.
 
 ## Joystick

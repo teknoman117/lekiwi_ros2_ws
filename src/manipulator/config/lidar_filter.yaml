@@ -1,0 +1,21 @@
+# laser_filters (sensors.launch.py, lidar_filter:=true): /scan_raw from the LD19 to /scan without
+# the robot itself. The lidar sees the arm, which would be an obstacle that moves with the robot
+# for slam_toolbox, and a collision for Nav2's collision monitor.
+scan_to_scan_filter_chain:
+  ros__parameters:
+    filter1:
+      name: robot_box
+      type: laser_filters/LaserScanBoxFilter
+      params:
+        # Drops the points inside this box around base_footprint. The scan plane is about
+        # 0.16 m up. The box must cover the arm in the poses you drive with, and stay inside
+        # robot_radius (0.18 m, config/nav2_params.yaml) so it hides nothing the costmaps need.
+        # Check in RViz: LaserScan /scan_raw against /scan.
+        box_frame: base_footprint
+        min_x: -0.16
+        max_x: 0.16
+        min_y: -0.16
+        max_y: 0.16
+        min_z: 0.0
+        max_z: 0.6
+        invert: false
