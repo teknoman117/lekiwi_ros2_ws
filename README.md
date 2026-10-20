@@ -64,8 +64,8 @@ discovery server on the robot:
 
 | | Runs |
 |---|---|
-| `compose.robot.yaml` (robot) | `discovery`: the Fast DDS discovery server on UDP 11811; `robot`: `robot.launch.py` |
-| `compose.workstation.yaml` (workstation) | `workstation`: `workstation.launch.py` (RViz, joystick driver), connected to the robot's discovery server; `imu` (profile): the IMU validation, no robot ([IMU](#imu)) |
+| `compose.robot.yaml` (robot) | `discovery`: the Fast DDS discovery server on UDP 11811; `robot`: `robot.launch.py`; `mapping`, `localization` (profiles): navigation; `imu` (profile): the IMU validation stack, RViz on the workstation ([IMU](#imu)) |
+| `compose.workstation.yaml` (workstation) | `workstation`: `workstation.launch.py` (RViz, joystick driver), connected to the robot's discovery server; `imu` (profile): the IMU validation, no robot; `imu-robot` (profile): RViz for the IMU validation on the robot ([IMU](#imu)) |
 
 The robot's nodes find each other through the server at `127.0.0.1`; the workstation's
 through the server at `ROBOT_IP`. The workstation runs as a super client, so RViz and
@@ -324,6 +324,24 @@ docker compose -f docker/compose.workstation.yaml run --rm imu ros2 topic hz /im
   publishes nothing until it has it.
 - Discovery is local only (`ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`, no discovery server), so
   it neither needs nor reaches the robot. `ROBOT_IP` is not used.
+
+**Validation on the robot**, with the IMU mounted there: the whole IMU stack (the driver,
+Madgwick, the display's TF) runs on the robot, and only RViz on the workstation, through the
+robot's discovery server. The same display: tilt and turn the robot and the axes follow. Run it
+**instead of** the robot modes, not alongside them: its TF puts `imu_link` under `odom` (the
+robot model has it on the top plate), and the robot's `sensors.launch.py` starts its own IMU
+driver.
+
+```bash
+# robot (Docker; stop any robot mode first)
+docker compose -f docker/compose.robot.yaml --profile '*' down
+docker compose -f docker/compose.robot.yaml --profile imu up -d
+# robot (native), with the discovery server running and ROS_DISCOVERY_SERVER set
+ros2 launch manipulator imu_test_robot.launch.py
+
+# workstation (ROBOT_IP set)
+docker compose -f docker/compose.workstation.yaml --profile imu-robot up
+```
 
 ## Joystick
 

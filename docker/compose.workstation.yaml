@@ -8,9 +8,10 @@
 #   ROBOT_IP=<robot address> docker compose -f docker/compose.workstation.yaml up --build
 #   docker compose -f docker/compose.workstation.yaml run --rm shell   # ros2 CLI
 #   docker compose -f docker/compose.workstation.yaml --profile imu up # IMU validation, no robot
+#   docker compose -f docker/compose.workstation.yaml --profile imu-robot up  # the IMU on the robot
 #
 # ROBOT_IP comes from the environment or docker/.env (see .env.example). The imu profile does
-# not use it.
+# not use it; imu-robot does.
 name: lekiwi-workstation
 
 x-workstation: &workstation
@@ -101,6 +102,30 @@ services:
       ros2 launch pico_lsm6ds3_ros2 validation.launch.py
       device:=${IMU_DEVICE:-}
       rviz:=${WORKSTATION_RVIZ:-true}
+    stop_signal: SIGINT
+
+  # The IMU check with the IMU on the robot (compose.robot.yaml, profile imu, runs the whole IMU
+  # stack there): only RViz here. Through the robot's discovery server, like the workstation
+  # service.
+  #
+  #   docker compose -f docker/compose.workstation.yaml --profile imu-robot up
+  imu-robot:
+    <<: *workstation
+    profiles: [imu-robot]
+    environment:
+      <<: *workstation-env
+      DISPLAY: ${DISPLAY:?DISPLAY is not set}
+      XAUTHORITY: /tmp/.Xauthority
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - ${XAUTHORITY_FILE:-/dev/null}:/tmp/.Xauthority:ro
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${VIDEO_GID:-44}"
+      - "${RENDER_GID:-65534}"
+    command: >-
+      ros2 launch manipulator imu_test_workstation.launch.py
     stop_signal: SIGINT
 
   shell:

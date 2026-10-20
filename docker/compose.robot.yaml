@@ -9,6 +9,7 @@
 #   docker compose -f docker/compose.robot.yaml up --build -d                         # robot
 #   docker compose -f docker/compose.robot.yaml --profile mapping up -d              # build a map
 #   docker compose -f docker/compose.robot.yaml --profile localization up -d         # navigate (NAV_MAP)
+#   docker compose -f docker/compose.robot.yaml --profile imu up -d                  # IMU check only
 #   docker compose -f docker/compose.robot.yaml --profile '*' down                   # stop any mode
 #   docker compose -f docker/compose.robot.yaml logs -f robot      # or mapping, localization
 #   docker compose -f docker/compose.robot.yaml run --rm shell     # ros2 CLI on the robot
@@ -112,6 +113,31 @@ services:
       joy:=${ROBOT_JOY:-false}
       joy_device:=${JOY_DEVICE:-0}
       joy_deadzone:=${JOY_DEADZONE:-0.166}
+
+  # The IMU check with the IMU on the robot: the whole IMU stack here (the driver, Madgwick),
+  # RViz on the workstation (compose.workstation.yaml, profile imu-robot). Instead of the robot
+  # modes, not alongside them: the check's TF puts imu_link under odom, where the robot model
+  # has it on the top plate. No servo bus.
+  imu:
+    <<: *robot
+    profiles: [imu]
+    depends_on: [discovery]
+    environment: *robot-env
+    volumes:
+      # The IMU by its /dev/input/by-id link, which follows it when it is plugged in again (the
+      # driver reconnects); a "devices:" entry would pin one eventN.
+      - /dev/input:/dev/input
+    device_cgroup_rules:
+      - 'c 13:* rmw'                  # input devices, read-write: the driver zeroes axis fuzz if set
+    group_add:
+      - "${INPUT_GID:-65534}"         # owns the IMU's event node on the host
+    # IMU_DEVICE: the IMU's /dev/input/by-id/...-event-* link (setup-env.sh finds it); empty:
+    # the driver opens the first /dev/input/by-id/usb-2e8a_LSM6DS3*-event-*, and waits for one.
+    command: >-
+      ros2 launch manipulator imu_test_robot.launch.py
+      device:=${IMU_DEVICE:-}
+    stop_signal: SIGINT
+    restart: "no"
 
   shell:
     <<: *robot
