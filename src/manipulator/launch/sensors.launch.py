@@ -1,7 +1,8 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, LogInfo, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, LogInfo, OpaqueFunction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -78,6 +79,27 @@ def sensors(context):
             ))
         else:
             missing('wrist_camera', 'camera_ros')
+
+    if enabled(context, 'imu'):
+        if available('pico_lsm6ds3_ros2'):
+            # The driver (/imu/data_raw) and Madgwick (/imu/data), in imu_link. No TF from
+            # Madgwick: robot_localization owns odom -> base_footprint once the IMU is fused.
+            # imu_stationary_source decides when the gyro bias is measured. Not "both" by
+            # default: the driver then also waits for the wheel odometry, which is missing early
+            # in the bringup and with limp:=true, and publishes uncorrected rates meanwhile.
+            actions.append(IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(os.path.join(
+                    get_package_share_directory('pico_lsm6ds3_ros2'), 'launch', 'imu.launch.py')),
+                launch_arguments={
+                    'device': LaunchConfiguration('imu_device').perform(context),
+                    'frame_id': 'imu_link',
+                    'publish_tf': 'false',
+                    'stationary_source':
+                        LaunchConfiguration('imu_stationary_source').perform(context),
+                }.items(),
+            ))
+        else:
+            missing('imu', 'pico_lsm6ds3_ros2')
     return actions
 
 
@@ -101,5 +123,13 @@ def generate_launch_description():
                                           'sensor (media-ctl)'),
         DeclareLaunchArgument('wrist_camera', default_value='true',
                               description='Pi Camera Module 3 on the wrist'),
+        DeclareLaunchArgument('imu', default_value='true',
+                              description='Pico + LSM6DS3 IMU (pico_lsm6ds3_ros2)'),
+        DeclareLaunchArgument('imu_stationary_source', default_value='imu',
+                              description='When the IMU driver measures the gyro bias: imu (the '
+                                          'IMU at rest), odom (the wheel odometry still) or both'),
+        DeclareLaunchArgument('imu_device', default_value='',
+                              description="The IMU's evdev node; empty: the first "
+                                          '/dev/input/by-id/usb-2e8a_LSM6DS3*-event-*'),
         OpaqueFunction(function=sensors),
     ])

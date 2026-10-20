@@ -7,6 +7,7 @@
   <xacro:include filename="$(find manipulator)/urdf/sensors/ld06.xacro"/>
   <xacro:include filename="$(find manipulator)/urdf/sensors/arducam_tof.xacro"/>
   <xacro:include filename="$(find manipulator)/urdf/sensors/pi_camera3.xacro"/>
+  <xacro:include filename="$(find manipulator)/urdf/sensors/pico_lsm6ds3.xacro"/>
 
   <!-- LD19 lidar: its base 100 mm back and 35 mm up from the centre of the top plate
        (upper_plate_link: centre of the plate's top surface, x forward). The scan origin
@@ -22,6 +23,13 @@
   <xacro:arducam_tof parent="base_link" name="tof">
     <origin xyz="0.100 0 0.030" rpy="0 0 0"/>
   </xacro:arducam_tof>
+
+  <!-- IMU (Pico + LSM6DS3): the chip 30 mm back, 70 mm left and 4 mm up from the centre of the
+       top plate. Its axes match the base's (x forward, y left, z up; checked as in
+       manipulator/README.md, IMU axes). Frame only. -->
+  <xacro:pico_lsm6ds3 parent="upper_plate_link" name="imu">
+    <origin xyz="-0.030 0.070 0.004" rpy="0 0 0"/>
+  </xacro:pico_lsm6ds3>
 
   <!-- Pi Camera 3 on the wrist, on gripper_link (it turns with wrist_roll), looking along the
        jaws (gripper_link's -z; the pitch of pi/2 turns the camera's x there). Frames only.

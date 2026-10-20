@@ -7,6 +7,7 @@ the LeKiwi project:
 |---|---|---|---|
 | LDROBOT LD19 lidar (LD06 also works) | `upper_plate_link`: base 100 mm back, 35 mm up | `lidar_link` (scan centre) | `ldlidar_stl_ros2` (submodule `src/ldlidar_stl_ros2`) |
 | Arducam ToF camera (frames only: the point cloud's origin, no geometry) | `base_link`: 100 mm forward, 30 mm up (the stock chassis camera's place) | `tof_link`, `tof_optical_frame` | Arducam's `arducam_rclpy_tof_pointcloud` (submodule, `third_party/`), run by `scripts/arducam_tof_node.py` |
+| Pico 2 + LSM6DS3 IMU (USB) | `upper_plate_link`: 30 mm back, 70 mm left, 4 mm up | `imu_link` (frame only) | `pico_lsm6ds3_ros2` (submodule `src/pico_lsm6ds3_ros2`): `/imu/data_raw`, `/imu/data` (Madgwick orientation) |
 | Raspberry Pi Camera 3 on a custom mount | `gripper_link` (turns with `wrist_roll`) | `wrist_camera_link`, `wrist_camera_optical_frame` (frames only) | `camera_ros` (TODO) |
 
 The lidar and ToF poses are measured; **the wrist camera's pose is a placeholder**. The ToF and
@@ -27,7 +28,7 @@ ros2 launch manipulator workstation.launch.py
 - `robot.launch.py`: `lekiwi_bringup`'s `robot.launch.py` with `description_file` =
   `urdf/manipulator.urdf.xacro` and `moveit_config_package` = `manipulator`, plus
   `sensors.launch.py` (`sensors:=false` to leave the drivers out).
-- `sensors.launch.py`: `lidar`, `lidar_filter` (the robot out of `/scan`, below), `lidar_model` (`LDLiDAR_LD19`, or `LDLiDAR_LD06`), `lidar_port`
+- `sensors.launch.py`: `lidar`, `lidar_filter` (the robot out of `/scan`, below), `imu`, `imu_device`, `imu_stationary_source`, `lidar_model` (`LDLiDAR_LD19`, or `LDLiDAR_LD06`), `lidar_port`
   (default `/dev/ldlidar`, the symlink the driver's udev rule creates), `tof`, `wrist_camera`. A driver that is not installed
   is skipped with a message.
 - `workstation.launch.py`: `lekiwi_bringup`'s `workstation.launch.py` with this package's MoveIt
@@ -132,6 +133,24 @@ controller warns that it misses its 20 Hz rate on the Pi).
   present!"); which port comes first can change with kernel updates and reboots. Needs
   Arducam's SDK (the `ArducamDepthCamera` Python module) and the camera's driver on the Pi; without
   them the node exits with a message.
+
+- **IMU**: `pico_lsm6ds3_ros2` (Pico 2 + LSM6DS3 over USB HID; firmware
+  `teknoman117/pico-lsm6ds3-hid`), started by `sensors.launch.py` with `publish_tf:=false`. The
+  gyro bias is measured whenever the IMU itself is at rest (`imu_stationary_source:=imu`).
+  `both` also requires the wheel odometry to be still, but then nothing is measured without
+  odometry (early in the bringup, `limp:=true`), and the driver publishes uncorrected rates. `/imu/data_raw` (rates, acceleration) and `/imu/data` (plus Madgwick's
+  orientation), in `imu_link`. On the robot's host the event node must be readable by the
+  container's input group (`INPUT_GID`); `/dev/input` is already passed in.
+
+  **IMU axes**: the model takes the chip's axes to match the base's (x forward, y left, z up).
+  Check after mounting, with `ros2 topic echo /imu/data_raw`:
+  1. At rest on the floor: `linear_acceleration` about (0, 0, +9.8).
+  2. Lift the front of the robot (nose up): `linear_acceleration.x` goes positive (the
+     accelerometer reads +g along whichever axis points up).
+  3. Lift the left side: `linear_acceleration.y` goes positive.
+  4. Turn it counter-clockwise (seen from above): `angular_velocity.z` goes positive.
+  A sign or axis that disagrees means the chip is turned: put the rotation in the `imu_joint`
+  `rpy` in `urdf/manipulator.urdf.xacro`.
 
 ## TODO (needs the Pi 5 and the cameras)
 

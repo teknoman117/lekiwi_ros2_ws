@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Pico + LSM6DS3 IMU (pico_lsm6ds3_ros2): a frame only, no geometry. ${name}_link is the
+       sensor chip with its own axes (the driver's frame_id: the gyro and accel axes as printed
+       on the LSM6DS3), placed on 'parent' by *origin. -->
+  <xacro:macro name="pico_lsm6ds3" params="parent name:=imu *origin">
+    <link name="${name}_link"/>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_link"/>
+      <xacro:insert_block name="origin"/>
+    </joint>
+  </xacro:macro>
+
+</robot>
