@@ -21,6 +21,7 @@
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>v4l-utils</exec_depend>  <!-- media-ctl: finds the ToF's video device -->
   <exec_depend>laser_filters</exec_depend>  <!-- sensors.launch.py: the robot out of /scan -->
+  <exec_depend>robot_localization</exec_depend>  <!-- robot.launch.py ekf:=true: wheels + IMU -->
   <!-- Navigation (navigation.launch.py, slam.launch.py): the Nav2 servers it starts and their
        plugins in config/nav2_params.yaml, not nav2_bringup (simulation and the other servers) -->
   <exec_depend>slam_toolbox</exec_depend>

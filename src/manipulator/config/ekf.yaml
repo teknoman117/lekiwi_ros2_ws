@@ -1,0 +1,46 @@
+# robot_localization's EKF (robot.launch.py, ekf:=true): the wheel odometry and the IMU's gyro,
+# fused into odom -> base_footprint (and /odometry/filtered). The omni controller's own TF is off
+# then (config/omni_ekf.yaml). slam_toolbox corrects the remaining drift (map -> odom).
+#
+# The wheels give the translation (vx, vy) and a yaw rate; the IMU (pico_lsm6ds3_ros2,
+# /imu/data_raw, gyro bias already removed) gives the yaw rate only. Their covariances decide
+# the mix: the wheels' yaw-rate variance is 0.03 (rad/s)^2 (omni_controllers.yaml, twist
+# covariance) against ~3e-6 for the gyro, so rotation comes from the gyro, which wheel slip
+# (snags on carpet edges) does not affect.
+#
+# 2D mode: the floor is flat, and Nav2 and slam_toolbox expect a level base_footprint. The yaw
+# rate is about the base's z axis; Madgwick's full 3D orientation (/imu/data) is not fused here.
+ekf_filter_node:
+  ros__parameters:
+    frequency: 50.0               # the wheel odometry's rate
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: true
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_footprint
+    world_frame: odom
+
+    # Config order: x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az
+    odom0: /omni_wheel_drive_controller/odom
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+    odom0_queue_size: 10
+    odom0_differential: false
+    odom0_relative: false
+
+    imu0: /imu/data_raw
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_queue_size: 50           # ~210 Hz into a 50 Hz filter
+    imu0_differential: false
+    imu0_relative: false
+    imu0_remove_gravitational_acceleration: false   # no acceleration fused
+
+    print_diagnostics: true

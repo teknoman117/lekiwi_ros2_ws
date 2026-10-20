@@ -64,6 +64,26 @@ ros2 run lekiwi_moveit_config compute_disabled_collisions.py \
 With `--new-only` it prints only pairs the SRDF does not have yet, so delete the old sensor
 pairs first.
 
+## Odometry: wheels + IMU
+
+`robot.launch.py` (`ekf:=true`, the default) runs `robot_localization`'s EKF
+(`config/ekf.yaml`): the wheel odometry's `vx`, `vy` and yaw rate, and the IMU's yaw rate
+(`/imu/data_raw`), into `odom -> base_footprint` and `/odometry/filtered`, which Nav2 uses. The
+omni controller's own TF is off then (`config/omni_ekf.yaml`, through `lekiwi_bringup`'s
+`extra_controller_config`); it still publishes `/omni_wheel_drive_controller/odom`.
+
+Rotation comes from the gyro: the covariances decide (the wheels' yaw-rate variance 0.03
+(rad/s)^2, the gyro's ~3e-6), and the gyro does not see wheel slip. Translation still comes from
+the wheels, so a wheel spinning in place is still an error that only slam_toolbox's scan
+matching corrects. 2D mode: a level `base_footprint`, as Nav2 and slam_toolbox expect.
+
+`ekf:=false`: the omni controller's odometry and TF alone, as before; then set Nav2's
+`odom_topic` (`config/nav2_params.yaml`) back to `/omni_wheel_drive_controller/odom`.
+
+Check: the odometry checks (Navigation, below), with the yaw from `/odometry/filtered`, and a loop
+over carpet edges back to a floor mark, comparing `/odometry/filtered` with
+`/omni_wheel_drive_controller/odom`.
+
 ## Navigation
 
 slam_toolbox (map and `map -> odom` from `/scan` and the wheel odometry), Nav2 (MPPI, omni motion

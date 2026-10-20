@@ -1,0 +1,7 @@
+# The omni controller with the EKF (robot.launch.py, ekf:=true; lekiwi_bringup's
+# extra_controller_config, over lekiwi_description's omni_controllers.yaml): the EKF publishes
+# odom -> base_footprint (config/ekf.yaml), so the controller must not. It still publishes its
+# odometry topic, which the EKF fuses.
+omni_wheel_drive_controller:
+  ros__parameters:
+    enable_odom_tf: false

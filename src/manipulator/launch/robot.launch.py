@@ -5,6 +5,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Opaq
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -16,6 +17,7 @@ def robot_and_navigation(context):
     nav = LaunchConfiguration('nav').perform(context).strip().lower()
     if nav not in ('false', 'mapping', 'localization'):
         raise RuntimeError(f'nav:={nav}: use false, mapping or localization')
+    ekf = LaunchConfiguration('ekf').perform(context).strip().lower() in ('true', '1')
 
     actions = [IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(lekiwi_bringup, 'launch', 'robot.launch.py')),
@@ -24,8 +26,22 @@ def robot_and_navigation(context):
             'moveit_config_package': 'manipulator',
             'base_cmd_vel_topic':
                 '/omni_wheel_drive_controller/cmd_vel' if nav == 'false' else '/cmd_vel_joy',
+            # With the EKF, it publishes odom -> base_footprint, not the omni controller
+            'extra_controller_config':
+                os.path.join(manipulator, 'config', 'omni_ekf.yaml') if ekf else '',
         }.items(),
     )]
+    if ekf:
+        # The wheel odometry and the IMU's gyro (sensors.launch.py) into odom -> base_footprint
+        # and /odometry/filtered (config/ekf.yaml). Without the IMU (sensors:=false, imu:=false)
+        # it runs on the wheel odometry alone.
+        actions.append(Node(
+            package='robot_localization',
+            executable='ekf_node',
+            name='ekf_filter_node',
+            output='screen',
+            parameters=[os.path.join(manipulator, 'config', 'ekf.yaml')],
+        ))
     if nav != 'false':
         actions.append(IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
@@ -53,6 +69,10 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('sensors', default_value='true',
                               description='Start the sensor drivers (sensors.launch.py)'),
+        DeclareLaunchArgument('ekf', default_value='true',
+                              description='Fuse the wheel odometry and the IMU (robot_localization) '
+                                          'into odom -> base_footprint; false: the omni '
+                                          "controller's odometry alone, and its TF"),
         DeclareLaunchArgument('nav', default_value='false',
                               description='Navigation (slam_toolbox, Nav2, twist_mux): false, '
                                           'mapping (build a map) or localization (in map)'),

@@ -191,6 +191,7 @@ container (`--name lekiwi` instead of `--rm`, then `docker start -ai lekiwi`).
 | `marker_speed` | `0.08` | the follower's maximum gripper speed, m/s |
 | `joy_teleop` | `true` | start the joystick teleop |
 | `base_cmd_vel_topic` | `/omni_wheel_drive_controller/cmd_vel` | where the joystick teleop sends base commands (a twist_mux input with navigation) |
+| `extra_controller_config` | (none) | a controller parameters file loaded after the stock ones, e.g. to turn off the omni controller's odom TF when an EKF publishes it |
 | `joy` | `false` | start `joy_node` here, for a joystick plugged into the robot |
 | `joy_device`, `joy_deadzone` | `0`, `0.166` | `joy_node` settings |
 
