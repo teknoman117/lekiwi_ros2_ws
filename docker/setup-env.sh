@@ -84,6 +84,7 @@ if [[ $role == robot ]]; then
     fi
 else
     set_default ROBOT_IP ""
+    set_default COMPOSE_PROFILES workstation   # compose.workstation.yaml's default mode
     set_default WORKSTATION_RVIZ true
     set_default WORKSTATION_JOY true
     video_gid=$(gid_of video /dev/dri/card0 /dev/dri/card1)
@@ -92,6 +93,13 @@ else
     set_value RENDER_GID "${render_gid:-$(id -g)}"
     xauth=${XAUTHORITY:-$HOME/.Xauthority}
     [[ -f $xauth ]] && set_value XAUTHORITY_FILE "$xauth" || set_value XAUTHORITY_FILE ""
+    # the Pico + LSM6DS3 IMU (the imu profile): the first one plugged in, unless set
+    imu=${IMU_DEVICE:-${value[IMU_DEVICE]:-}}
+    if [[ -z $imu ]]; then
+        imu=$(ls /dev/input/by-id/*LSM6DS3*-event-* 2>/dev/null | head -n 1 || true)
+    fi
+    set_value IMU_DEVICE "$imu"
+    [[ -n $imu ]] || echo "note: no LSM6DS3 IMU found (IMU_DEVICE empty: the imu profile finds it when plugged in)" >&2
     [[ -n ${value[ROBOT_IP]} ]] || echo "note: ROBOT_IP is not set; set it in $PWD/$env_file or the environment" >&2
 fi
 

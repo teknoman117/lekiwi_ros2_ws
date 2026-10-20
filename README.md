@@ -15,6 +15,7 @@ SO-101 arm) under ROS 2 Jazzy.
 | `lekiwi_moveit_config` | MoveIt for the arm on the LeKiwi, with collisions against the base and the ground |
 | `lekiwi_teleop` | the RViz marker follower (`arm_marker`) and the joystick teleop (`joy_teleop`) |
 | `manipulator` | my robot: the stock LeKiwi plus my sensors (lidar, ToF camera, wrist camera); see [Your own robot](#your-own-robot) |
+| `pico_lsm6ds3_ros2` | driver and orientation fusion for the Pico + LSM6DS3 USB IMU; see [IMU](#imu) |
 
 Each package has a README with the details. Third-party drivers: `ldlidar_stl_ros2` (LD19
 lidar, submodule in `src/`) and `arducam_rclpy_tof_pointcloud` (Arducam ToF, a symlink into the
@@ -64,7 +65,7 @@ discovery server on the robot:
 | | Runs |
 |---|---|
 | `compose.robot.yaml` (robot) | `discovery`: the Fast DDS discovery server on UDP 11811; `robot`: `robot.launch.py` |
-| `compose.workstation.yaml` (workstation) | `workstation`: `workstation.launch.py` (RViz, joystick driver), connected to the robot's discovery server |
+| `compose.workstation.yaml` (workstation) | `workstation`: `workstation.launch.py` (RViz, joystick driver), connected to the robot's discovery server; `imu` (profile): the IMU validation, no robot ([IMU](#imu)) |
 
 The robot's nodes find each other through the server at `127.0.0.1`; the workstation's
 through the server at `ROBOT_IP`. The workstation runs as a super client, so RViz and
@@ -98,7 +99,9 @@ docker compose -f docker/compose.workstation.yaml up --build
 - **Modes** are Compose profiles, one robot service each: `robot` (the default, from
   `COMPOSE_PROFILES` in `docker/.env`), `mapping` and `localization` (Navigation, below), e.g.
   `docker compose -f docker/compose.robot.yaml --profile mapping up -d`. One at a time: stop the
-  running mode before starting another.
+  running mode before starting another. The workstation's are `workstation` (the default,
+  `COMPOSE_PROFILES=workstation` from `setup-env.sh workstation`; rerun it if a plain `up` says
+  no service is selected) and `imu` ([IMU](#imu)).
 - **Stopping** sends SIGINT, like Ctrl-C: the servo driver stops the wheels only on a clean
   shutdown. `docker compose -f docker/compose.robot.yaml --profile '*' down` stops any mode (a
   plain `down` only the default one).
@@ -294,6 +297,33 @@ ros2 topic echo /omni_wheel_drive_controller/cmd_vel   # twist_mux's output (to 
 
 A goal with no plan: Nav2 is not up (above), the pose estimate is missing, or the goal is in a
 wall or unknown space. A plan but no motion: follow `/cmd_vel` to the base (above).
+
+## IMU
+
+A Raspberry Pi Pico 2 with an LSM6DS3 IMU, on USB
+([firmware](https://github.com/teknoman117/pico-lsm6ds3-hid)), for full 3D orientation from the
+gyro and accelerometer: the gyro catches the heading errors from wheel slip (snags on carpet
+edges). `pico_lsm6ds3_ros2` reads it (`imu/data_raw`, Pico-clock stamps, gyro bias removed) and
+fuses it with `imu_filter_madgwick` (`imu/data`, orientation); see its README. It is not wired
+into the robot's navigation yet.
+
+**Validation on the workstation**, with the IMU plugged in there and no robot: the driver, the
+fusion and RViz, which shows the IMU's orientation as axes and a box. Tilt and turn the IMU and
+they follow.
+
+```bash
+docker/setup-env.sh workstation       # once: finds the IMU (IMU_DEVICE) and sets the profiles
+docker compose -f docker/compose.workstation.yaml --profile imu up
+docker compose -f docker/compose.workstation.yaml run --rm imu ros2 topic hz /imu/data_raw  # ~210 Hz
+```
+
+- `IMU_DEVICE` is the IMU's `/dev/input/by-id/usb-2e8a_LSM6DS3_<serial>-event-if00` link;
+  empty, the driver opens the first one, and it reconnects if the IMU is plugged in again.
+- Keep the IMU still for the first ~4 s: the driver estimates the gyro bias then (it differs
+  at every power-up: one unit read 0.003 rad/s on z, then 0.085 after replugging), and
+  publishes nothing until it has it.
+- Discovery is local only (`ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`, no discovery server), so
+  it neither needs nor reaches the robot. `ROBOT_IP` is not used.
 
 ## Joystick
 

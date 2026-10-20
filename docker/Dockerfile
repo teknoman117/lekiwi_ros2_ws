@@ -6,7 +6,8 @@
 #
 #   robot        everything that runs on the robot: the servo driver and controllers, MoveIt,
 #                the teleop nodes, and the Fast DDS discovery server. No GUI.
-#   workstation  RViz (MoveIt panel, arm marker) and the joystick driver.
+#   workstation  RViz (MoveIt panel, arm marker), the joystick driver, and the IMU driver and
+#                its validation (pico_lsm6ds3_ros2, the imu profile).
 #
 # The compose files in this directory build and run them.
 
@@ -47,12 +48,13 @@ FROM base AS robot-deps
 COPY --from=manifests /tmp/manifests /tmp/manifests
 # All packages, without the GUI-only dependencies and without test dependencies. No '-r': a
 # dependency that cannot be resolved fails the build. (ament_python: Arducam's package.xml lists
-# the build type as a build tool; it is not a rosdep key.)
+# the build type as a build tool; it is not a rosdep key. rviz_default_plugins, rviz_imu_plugin:
+# pico_lsm6ds3_ros2's validation.launch.py, which runs on the workstation.)
 RUN apt-get update \
     && rosdep install -y --from-paths /tmp/manifests --ignore-src --rosdistro "${ROS_DISTRO}" \
         --dependency-types build --dependency-types buildtool --dependency-types build_export \
         --dependency-types buildtool_export --dependency-types exec \
-        --skip-keys "rviz2 moveit_ros_visualization joint_state_publisher_gui ament_python" \
+        --skip-keys "rviz2 rviz_default_plugins rviz_imu_plugin moveit_ros_visualization joint_state_publisher_gui ament_python" \
     && rm -rf /var/lib/apt/lists/* /tmp/manifests
 
 FROM robot-deps AS robot

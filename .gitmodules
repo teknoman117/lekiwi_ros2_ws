@@ -25,3 +25,6 @@
 [submodule "third_party/Arducam_tof_camera"]
 	path = third_party/Arducam_tof_camera
 	url = https://github.com/ArduCAM/Arducam_tof_camera
+[submodule "src/pico_lsm6ds3_ros2"]
+	path = src/pico_lsm6ds3_ros2
+	url = https://github.com/teknoman117/pico_lsm6ds3_ros2

@@ -1,11 +1,16 @@
 # Workstation: RViz (MotionPlanning panel, arm marker) and the joystick driver, connected to the
 # robot's discovery server at ROBOT_IP. Host networking.
 #
+# Each mode is a Compose profile. docker/.env sets COMPOSE_PROFILES=workstation, so a plain "up"
+# starts the workstation; --profile picks another mode instead:
+#
 #   docker/setup-env.sh workstation                        # once: writes docker/.env
 #   ROBOT_IP=<robot address> docker compose -f docker/compose.workstation.yaml up --build
 #   docker compose -f docker/compose.workstation.yaml run --rm shell   # ros2 CLI
+#   docker compose -f docker/compose.workstation.yaml --profile imu up # IMU validation, no robot
 #
-# ROBOT_IP comes from the environment or docker/.env (see .env.example).
+# ROBOT_IP comes from the environment or docker/.env (see .env.example). The imu profile does
+# not use it.
 name: lekiwi-workstation
 
 x-workstation: &workstation
@@ -23,12 +28,15 @@ x-workstation: &workstation
 
 x-workstation-env: &workstation-env
   ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
-  ROS_DISCOVERY_SERVER: ${ROBOT_IP:?set ROBOT_IP to the robot's address, in the environment or docker/.env}:${DISCOVERY_PORT:-11811}
+  # Not ${ROBOT_IP:?...}: Compose checks that in every service, also the imu profile's, which
+  # does not need the robot. entrypoint.sh stops with an error if ROBOT_IP is empty.
+  ROS_DISCOVERY_SERVER: ${ROBOT_IP:-}:${DISCOVERY_PORT:-11811}
   ROS_SUPER_CLIENT: "TRUE"            # RViz and the CLI see the whole graph
 
 services:
   workstation:
     <<: *workstation
+    profiles: [workstation]
     environment:
       <<: *workstation-env
       DISPLAY: ${DISPLAY:?DISPLAY is not set}
@@ -56,6 +64,43 @@ services:
       joy:=${WORKSTATION_JOY:-true}
       joy_device:=${JOY_DEVICE:-0}
       joy_deadzone:=${JOY_DEADZONE:-0.166}
+    stop_signal: SIGINT
+
+  # Sensor validation: the Pico + LSM6DS3 IMU driver, the Madgwick fusion and RViz, all here on
+  # the workstation (pico_lsm6ds3_ros2 validation.launch.py), with the IMU plugged in here. No
+  # robot and no discovery server: plain local discovery, limited to this host
+  # (ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST), so nothing reaches the network or the robot.
+  #
+  #   docker compose -f docker/compose.workstation.yaml --profile imu up
+  #   docker compose -f docker/compose.workstation.yaml run --rm imu ros2 topic hz /imu/data_raw
+  imu:
+    <<: *workstation
+    profiles: [imu]
+    environment:
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      DISPLAY: ${DISPLAY:?DISPLAY is not set}
+      XAUTHORITY: /tmp/.Xauthority
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - ${XAUTHORITY_FILE:-/dev/null}:/tmp/.Xauthority:ro
+      # The IMU by its /dev/input/by-id link, which follows it when it is plugged in again
+      # (the driver reconnects); a "devices:" entry would pin one eventN.
+      - /dev/input:/dev/input
+    devices:
+      - /dev/dri:/dev/dri
+    device_cgroup_rules:
+      - 'c 13:* rmw'                  # input devices, read-write: the driver zeroes axis fuzz if set
+    group_add:                        # as above; INPUT_GID also owns the IMU's event node
+      - "${VIDEO_GID:-44}"
+      - "${RENDER_GID:-65534}"
+      - "${INPUT_GID:-65533}"
+    # IMU_DEVICE: the IMU's /dev/input/by-id/...-event-* link (setup-env.sh finds it). Empty:
+    # the driver opens the first /dev/input/by-id/usb-2e8a_LSM6DS3*-event-*, and waits for one.
+    command: >-
+      ros2 launch pico_lsm6ds3_ros2 validation.launch.py
+      device:=${IMU_DEVICE:-}
+      rviz:=${WORKSTATION_RVIZ:-true}
     stop_signal: SIGINT
 
   shell:
