@@ -130,7 +130,10 @@ You can already send goals while mapping (RViz: 2D Goal Pose).
 the map from `NAV_MAP`, default `/maps/apartment`; `/maps` is `MAPS_DIR` on the host, default
 `lekiwi_ros2_ws/maps`).
 In RViz, set the fixed frame to `map`, give the robot's pose with 2D Pose Estimate, then goals
-with 2D Goal Pose.
+with 2D Goal Pose. Localization matches each scan against the map and a rolling buffer of the
+last scans, `localization_scan_buffer_size` (default 30, about the last 6 m of travel; mapping
+uses `scan_buffer_size` 10 from `config/slam_toolbox.yaml`): deeper keeps more local context
+where the apartment changed since mapping, at more CPU on the Pi.
 
 Tuning, in `config/nav2_params.yaml`: speeds (`vx_max`, `vy_max`, `wz_max` in MPPI and
 `velocity_smoother`), `inflation_radius` (doorways), MPPI's `batch_size` (lower it if the

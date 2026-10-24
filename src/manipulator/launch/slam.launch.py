@@ -24,6 +24,16 @@ def slam(context):
             raise RuntimeError('slam_mode:=localization needs map:=<serialized map, without '
                                'the .posegraph/.data extension>')
         rewrites['map_file_name'] = map_file
+        # The rolling buffer of recent scans that localization matches against, besides the
+        # saved map (slam_toolbox's scan_buffer_size, also the mapping chain length in
+        # config/slam_toolbox.yaml). A scan joins it every minimum_travel_distance (0.2 m) or
+        # minimum_travel_heading (0.2 rad), so 30 is about the last 6 m of travel, still within
+        # scan_buffer_maximum_scan_distance (8 m). Deeper: more local context through areas that
+        # changed since the map, more scan matching work on the Pi.
+        depth = LaunchConfiguration('localization_scan_buffer_size').perform(context).strip()
+        if not depth.isdigit() or int(depth) < 1:
+            raise RuntimeError(f'localization_scan_buffer_size:={depth}: a whole number, 1 or more')
+        rewrites['scan_buffer_size'] = depth   # RewrittenYaml takes strings; convert_types
 
     params = RewrittenYaml(
         source_file=os.path.join(
@@ -53,6 +63,9 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('slam_mode', default_value='mapping',
                               description='mapping: build a map; localization: localize in map'),
+        DeclareLaunchArgument('localization_scan_buffer_size', default_value='30',
+                              description='slam_mode:=localization: recent scans kept to match '
+                                          'against, besides the map (about 0.2 m of travel each)'),
         DeclareLaunchArgument('map', default_value='',
                               description='Serialized map for localization, without extension '
                                           '(e.g. /maps/apartment)'),
